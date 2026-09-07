@@ -20,6 +20,6 @@
 "aqua:aristocratos/btop" = "1.4.7"
 {{- end }}
 
-{{- if or (eq .profile "docker") (eq .profile "zgx") }}
+{{- if or (eq .profile "docker") (eq .profile "zgx") (and (eq .profile "ubuntulab") .withDocker) }}
 "aqua:jesseduffield/lazydocker" = "0.25.2"
 {{- end }}

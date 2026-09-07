@@ -4,7 +4,7 @@ docs/
 docs/**
 
 # LazyDocker is managed only on Docker-role hosts.
-{{- if not (or (eq .profile "docker") (eq .profile "zgx")) }}
+{{- if not (or (eq .profile "docker") (eq .profile "zgx") (and (eq .profile "ubuntulab") .withDocker)) }}
 .config/lazydocker/
 .config/lazydocker/**
 {{- end }}

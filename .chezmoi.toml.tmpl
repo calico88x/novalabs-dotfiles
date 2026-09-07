@@ -1,5 +1,10 @@
 {{- $profiles := list "proxmox" "docker" "pihole" "ubuntulab" "lovelace" "worker1" "zgx" "opnsense" -}}
 {{- $profile := promptChoiceOnce . "profile" "NovaLabs host profile" $profiles -}}
+{{- $withDocker := false -}}
+{{- if eq $profile "ubuntulab" -}}
+{{-   $withDocker = promptBoolOnce . "withDocker" "Enable optional Docker tooling on UbuntuLab" false -}}
+{{- end -}}
 
 [data]
 profile = {{ $profile | quote }}
+withDocker = {{ $withDocker }}
