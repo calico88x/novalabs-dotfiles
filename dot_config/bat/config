@@ -1,0 +1,7 @@
+--theme="Dracula"
+--style="header,grid,numbers,changes"
+--color="auto"
+--paging="auto"
+--pager="less -FR"
+--tabs="2"
+--wrap="never"

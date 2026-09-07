@@ -1,0 +1,107 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/jesseduffield/lazygit/master/schema/config.json
+
+gui:
+  scrollHeight: 2
+  scrollPastBottom: true
+  scrollOffMargin: 2
+  tabWidth: 2
+  mouseEvents: true
+  sidePanelWidth: 0.3
+  mainPanelSplitMode: flexible
+  wrapLinesInStagingView: true
+  language: auto
+  timeFormat: '2006-01-02'
+  shortTimeFormat: '15:04'
+
+  theme:
+    activeBorderColor:
+      - '#89b4fa'
+      - bold
+    inactiveBorderColor:
+      - '#6c7086'
+    searchingActiveBorderColor:
+      - '#89dceb'
+      - bold
+    optionsTextColor:
+      - '#b4befe'
+    selectedLineBgColor:
+      - '#313244'
+    inactiveViewSelectedLineBgColor:
+      - '#252538'
+    cherryPickedCommitFgColor:
+      - '#89b4fa'
+    cherryPickedCommitBgColor:
+      - '#313244'
+    markedBaseCommitFgColor:
+      - '#1e1e2e'
+    markedBaseCommitBgColor:
+      - '#f9e2af'
+    unstagedChangesColor:
+      - '#f38ba8'
+    defaultFgColor:
+      - '#cdd6f4'
+
+  commitLength:
+    show: true
+
+  showListFooter: true
+  showFileTree: true
+  showRootItemInFileTree: true
+  fileTreeSortOrder: foldersFirst
+  showNumstatInFilesView: true
+  showRandomTip: false
+  showCommandLog: true
+  showBottomLine: true
+  showPanelJumps: true
+  nerdFontsVersion: '3'
+  showFileIcons: true
+  commitHashLength: 8
+  showDivergenceFromBaseBranch: arrowAndNumber
+  splitDiff: auto
+  screenMode: normal
+  border: rounded
+  animateExplosion: true
+  portraitMode: auto
+  filterMode: fuzzy
+
+git:
+  commit:
+    autoWrapCommitMessage: true
+    autoWrapWidth: 72
+
+  mainBranches:
+    - main
+    - master
+
+  autoFetch: true
+  autoRefresh: true
+  autoDetectExternalChanges: true
+  autoForwardBranches: onlyMainBranches
+  fetchAll: true
+  autoStageResolvedConflicts: true
+  ignoreWhitespaceInDiffView: false
+  diffContextSize: 5
+  renameSimilarityThreshold: 50
+  disableForcePushing: true
+  parseEmoji: true
+
+  log:
+    order: topo-order
+    showGraph: always
+    showWholeGraph: false
+
+  localBranchSortOrder: recency
+  remoteBranchSortOrder: date
+  truncateCopiedCommitHashesTo: 12
+
+update:
+  method: never
+
+confirmOnQuit: false
+quitOnTopLevelReturn: false
+disableStartupPopups: true
+notARepository: prompt
+promptToReturnFromSubprocess: true
+
+os:
+  editPreset: vim

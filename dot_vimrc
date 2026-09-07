@@ -1,0 +1,108 @@
+" NovaLab common Vim configuration
+
+if &compatible
+  set nocompatible
+endif
+
+" Add this repository directory to Vim's runtime path.
+let s:novalab_vim_root = fnamemodify(resolve(expand('<sfile>:p')), ':h')
+execute 'set runtimepath^=' . fnameescape(s:novalab_vim_root)
+
+" File types, syntax, and indentation
+filetype plugin indent on
+syntax enable
+
+set encoding=utf-8
+set fileformats=unix,dos,mac
+set background=dark
+
+if has('termguicolors')
+  set termguicolors
+endif
+
+colorscheme novalab
+
+" Interface
+set number
+set cursorline
+set ruler
+set showcmd
+set showmatch
+set laststatus=2
+set signcolumn=yes
+set colorcolumn=100
+set shortmess+=I
+set title
+set hidden
+
+" Editing
+set backspace=indent,eol,start
+set autoindent
+set smartindent
+set expandtab
+set tabstop=2
+set softtabstop=2
+set shiftwidth=2
+set shiftround
+set splitbelow
+set splitright
+
+" Search
+set ignorecase
+set smartcase
+set incsearch
+set hlsearch
+
+" Performance and interaction
+set updatetime=300
+set timeoutlen=500
+set scrolloff=4
+set sidescrolloff=4
+set mouse=a
+
+" Files and safety
+set nomodeline
+set backup
+set writebackup
+set undofile
+
+let s:novalab_cache_root = empty($XDG_CACHE_HOME)
+      \ ? expand('~/.cache/vim')
+      \ : expand($XDG_CACHE_HOME . '/vim')
+
+let s:novalab_backup_dir = s:novalab_cache_root . '/backup'
+let s:novalab_swap_dir = s:novalab_cache_root . '/swap'
+let s:novalab_undo_dir = s:novalab_cache_root . '/undo'
+
+if exists('*mkdir')
+  call mkdir(s:novalab_backup_dir, 'p', 0700)
+  call mkdir(s:novalab_swap_dir, 'p', 0700)
+  call mkdir(s:novalab_undo_dir, 'p', 0700)
+endif
+
+execute 'set backupdir=' . fnameescape(s:novalab_backup_dir) . '//'
+execute 'set directory=' . fnameescape(s:novalab_swap_dir) . '//'
+execute 'set undodir=' . fnameescape(s:novalab_undo_dir) . '//'
+
+" Status line
+set statusline=
+set statusline+=%#StatusLine#
+set statusline+=\ %f
+set statusline+=%m
+set statusline+=%r
+set statusline+=%=
+set statusline+=\ %y
+set statusline+=\ %{&fileencoding?&fileencoding:&encoding}
+set statusline+=\ [%{&fileformat}]
+set statusline+=\ %l:%c
+set statusline+=\ %p%%\
+
+" Additional file detection
+augroup novalab_filetypes
+  autocmd!
+  autocmd BufNewFile,BufRead *.toml setfiletype toml
+  autocmd BufNewFile,BufRead Dockerfile.* setfiletype dockerfile
+  autocmd BufNewFile,BufRead *.service,*.socket,*.target,*.timer setfiletype systemd
+  autocmd FileType gitcommit setlocal spell textwidth=72 colorcolumn=73
+  autocmd FileType make setlocal noexpandtab
+augroup END

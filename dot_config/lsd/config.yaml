@@ -1,0 +1,43 @@
+---
+classic: false
+
+blocks:
+  - permission
+  - user
+  - group
+  - size
+  - date
+  - name
+
+color:
+  when: auto
+  theme: default
+
+date: '+%Y-%m-%d %H:%M'
+dereference: false
+
+icons:
+  when: auto
+  theme: fancy
+  separator: ' '
+
+indicators: true
+layout: grid
+
+recursion:
+  enabled: false
+
+size: short
+permission: rwx
+
+sorting:
+  column: name
+  reverse: false
+  dir-grouping: first
+
+no-symlink: false
+total-size: false
+hyperlink: auto
+symlink-arrow: ⇒
+header: true
+literal: false
