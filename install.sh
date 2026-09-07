@@ -183,7 +183,11 @@ case "$profile" in
             die "Docker profile requires Docker to be usable by the current user"
         ;;
     zgx)
-        die "ZGX Docker bootstrap is not enabled yet; Docker ownership must be validated first"
+        command -v docker >/dev/null 2>&1 ||
+            die "ZGX profile requires the existing NVIDIA-managed Docker installation"
+
+        docker info >/dev/null 2>&1 ||
+            die "ZGX profile requires Docker to be usable by the current user"
         ;;
     ubuntulab)
         if [ "$with_docker" = "true" ]; then
