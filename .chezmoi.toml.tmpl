@@ -6,6 +6,7 @@
 {{- end -}}
 
 sourceDir = {{ .chezmoi.sourceDir | quote }}
+umask = 0o022
 
 [data]
 profile = {{ $profile | quote }}
