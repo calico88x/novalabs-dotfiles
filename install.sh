@@ -187,7 +187,11 @@ case "$profile" in
         ;;
     ubuntulab)
         if [ "$with_docker" = "true" ]; then
-            die "UbuntuLab Docker bootstrap is not enabled yet; Docker ownership must be validated first"
+            command -v docker >/dev/null 2>&1 ||
+                die "UbuntuLab Docker mode requires an existing Docker installation"
+
+            docker info >/dev/null 2>&1 ||
+                die "UbuntuLab Docker mode requires Docker to be usable by the current user"
         fi
         ;;
 esac

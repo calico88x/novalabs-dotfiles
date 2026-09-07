@@ -52,7 +52,7 @@ expected_ids = ["ubuntu"]
 expected_architectures = ["amd64"]
 mutation = "managed"
 container_runtime = "optional-docker"
-docker = "optional"
+docker = "optional-external"
 lazydocker = "optional"
 ssh = "systemd-managed"
 
