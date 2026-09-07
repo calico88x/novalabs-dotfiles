@@ -22,6 +22,32 @@ NovaLabs Dotfiles separates ownership into three layers.
 
 Host policy is declared in `.chezmoidata/hosts.toml`.
 
+## System map
+
+```mermaid
+flowchart TD
+  A["novalabs-dotfiles"] --> B["Host policy<br/>.chezmoidata/hosts.toml"]
+  A --> C["Themes and templates<br/>theme.toml + .chezmoitemplates"]
+  A --> D["Managed config sources<br/>private_dot_config"]
+  A --> E["Bootstrap<br/>install.sh"]
+
+  E --> F["Preview<br/>./install.sh"]
+  E --> G["Apply<br/>./install.sh --apply"]
+
+  G --> H["Validate host<br/>hostname • OS • arch • policy"]
+  H --> I["Install native packages<br/>apt-get baseline"]
+  I --> J["Apply user config<br/>chezmoi"]
+  J --> K["Install portable tools<br/>mise"]
+  K --> L["Fresh shell<br/>exec bash -l"]
+
+  J --> M["Managed user config<br/>bash • git • starship • fastfetch • tmux • vim"]
+  K --> N["Portable CLI tools<br/>nvim • node • rg • fd • fzf • lazygit • lazydocker"]
+
+  H --> O["Externally owned components<br/>Docker engine • containerd • NVIDIA platform tools"]
+
+  B --> P["Host profiles<br/>proxmox • docker • pihole • ubuntulab<br/>lovelace • worker1 • zgx • opnsense"]
+```
+
 ### Ownership vocabulary
 
 | Value | Meaning |
