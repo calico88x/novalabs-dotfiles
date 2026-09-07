@@ -175,12 +175,19 @@ with_docker="$(
 )"
 
 case "$profile" in
-    docker|zgx)
-        die "Docker-role bootstrap is not enabled yet; Docker vendor handling must be implemented first"
+    docker)
+        command -v docker >/dev/null 2>&1 ||
+            die "Docker profile requires an existing Docker installation"
+
+        docker info >/dev/null 2>&1 ||
+            die "Docker profile requires Docker to be usable by the current user"
+        ;;
+    zgx)
+        die "ZGX Docker bootstrap is not enabled yet; Docker ownership must be validated first"
         ;;
     ubuntulab)
         if [ "$with_docker" = "true" ]; then
-            die "UbuntuLab Docker bootstrap is not enabled yet; Docker vendor handling must be implemented first"
+            die "UbuntuLab Docker bootstrap is not enabled yet; Docker ownership must be validated first"
         fi
         ;;
 esac

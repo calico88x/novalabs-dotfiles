@@ -24,7 +24,7 @@ expected_ids = ["debian", "ubuntu"]
 expected_architectures = ["amd64"]
 mutation = "managed"
 container_runtime = "docker"
-docker = "managed"
+docker = "external"
 lazydocker = "managed"
 ssh = "systemd-managed"
 
