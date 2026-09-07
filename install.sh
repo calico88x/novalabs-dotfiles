@@ -77,6 +77,7 @@ ca-certificates
 curl
 git
 gzip
+libatomic1
 htop
 openssh-server
 procps
