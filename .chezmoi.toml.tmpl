@@ -1,0 +1,5 @@
+{{- $profiles := list "proxmox" "docker" "pihole" "ubuntulab" "lovelace" "worker1" "zgx" "opnsense" -}}
+{{- $profile := promptChoiceOnce . "profile" "NovaLabs host profile" $profiles -}}
+
+[data]
+profile = {{ $profile | quote }}

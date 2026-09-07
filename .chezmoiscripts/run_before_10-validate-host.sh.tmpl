@@ -1,0 +1,110 @@
+{{- $host := index .hosts .profile -}}
+#!/bin/sh
+set -eu
+
+profile={{ .profile | quote }}
+
+die() {
+  printf 'novalabs-dotfiles: %s\n' "$*" >&2
+  exit 1
+}
+
+in_list() {
+  needle="$1"
+  shift
+
+  for item in "$@"; do
+    if [ "$needle" = "$item" ]; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+actual_hostname="$(
+  hostname 2>/dev/null |
+    cut -d. -f1 |
+    tr '[:upper:]' '[:lower:]'
+)"
+
+actual_kernel="$(
+  uname -s |
+    tr '[:upper:]' '[:lower:]'
+)"
+
+case "$(uname -m)" in
+  x86_64|amd64)
+    actual_arch="amd64"
+    ;;
+  aarch64|arm64)
+    actual_arch="arm64"
+    ;;
+  *)
+    actual_arch="$(
+      uname -m |
+        tr '[:upper:]' '[:lower:]'
+    )"
+    ;;
+esac
+
+if [ "$actual_kernel" = "freebsd" ]; then
+  if [ -e /usr/local/etc/inc/config.inc ]; then
+    actual_os="opnsense"
+  else
+    actual_os="freebsd"
+  fi
+else
+  actual_os="unknown"
+
+  if [ -r /etc/os-release ]; then
+    actual_os="$(
+      awk -F= '
+        $1 == "ID" {
+          gsub(/^"|"$/, "", $2)
+          print tolower($2)
+          exit
+        }
+      ' /etc/os-release
+    )"
+  fi
+fi
+
+identity_ok=0
+
+case "$actual_hostname" in
+{{- range $host.hostnames }}
+  {{ . }})
+    identity_ok=1
+    ;;
+{{- end }}
+esac
+
+{{- range $host.markers }}
+if [ -e {{ . | quote }} ]; then
+  identity_ok=1
+fi
+{{- end }}
+
+if [ "$identity_ok" -ne 1 ]; then
+  die "profile '$profile' does not match hostname '$actual_hostname' or its required host markers"
+fi
+
+if [ "$actual_kernel" != {{ $host.kernel | quote }} ]; then
+  die "profile '$profile' requires kernel {{ $host.kernel }}, detected $actual_kernel"
+fi
+
+if ! in_list "$actual_os" {{ range $host.expected_ids }}{{ . | quote }} {{ end }}; then
+  die "profile '$profile' does not support OS ID '$actual_os'"
+fi
+
+if ! in_list "$actual_arch" {{ range $host.expected_architectures }}{{ . | quote }} {{ end }}; then
+  die "profile '$profile' does not support architecture '$actual_arch'"
+fi
+
+{{- if eq $host.mutation "stage-only" }}
+die "profile '$profile' is stage-only; configuration apply is intentionally disabled"
+{{- end }}
+
+printf 'NovaLabs host validation: %s [%s / %s / %s]\n' \
+  "$profile" "$actual_os" "$actual_arch" "$actual_hostname"
