@@ -1,0 +1,25 @@
+# Managed by ChezMoi for NovaLabs hosts.
+# Tool versions are intentionally pinned.
+
+[tools]
+"aqua:sharkdp/bat" = "0.26.1"
+"aqua:twpayne/chezmoi" = "2.72.1"
+"aqua:fastfetch-cli/fastfetch" = "2.68.1"
+"aqua:sharkdp/fd" = "10.5.0"
+"aqua:junegunn/fzf" = "0.74.3"
+"aqua:jesseduffield/lazygit" = "0.64.1"
+"aqua:lsd-rs/lsd" = "1.2.0"
+"aqua:neovim/neovim" = "0.12.5"
+"core:node" = "26.8.1"
+"aqua:BurntSushi/ripgrep" = "15.2.0"
+"aqua:starship/starship" = "1.26.0"
+"aqua:yorukot/superfile" = "1.6.0"
+"aqua:jdx/usage" = "6.8.0"
+
+{{- if ne .profile "zgx" }}
+"aqua:aristocratos/btop" = "1.4.7"
+{{- end }}
+
+{{- if or (eq .profile "docker") (eq .profile "zgx") }}
+"aqua:jesseduffield/lazydocker" = "0.25.2"
+{{- end }}

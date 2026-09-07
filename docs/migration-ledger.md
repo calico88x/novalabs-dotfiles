@@ -73,3 +73,13 @@ are not used in the committed fleet configuration.
 
 Version upgrades are deliberate repository changes and are reviewed as normal
 Git diffs.
+
+## Bootstrap versions
+
+The initial validated bootstrap toolchain is:
+
+- Mise: 2026.8.5
+- ChezMoi: 2.72.1
+
+Mise is bootstrap infrastructure and is pinned separately from the Mise-managed
+`[tools]` configuration.
