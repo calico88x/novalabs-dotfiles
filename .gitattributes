@@ -19,3 +19,5 @@ common/git/config text eol=lf
 .gitattributes text eol=lf
 .editorconfig text eol=lf
 *.md text eol=lf
+
+modify_* text eol=lf

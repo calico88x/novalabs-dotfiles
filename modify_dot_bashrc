@@ -1,0 +1,67 @@
+#!/bin/sh
+set -eu
+
+begin='# >>> NovaLab dotfiles >>>'
+end='# <<< NovaLab dotfiles <<<'
+
+die() {
+  printf 'novalabs-dotfiles: %s\n' "$*" >&2
+  exit 1
+}
+
+tempfile="$(mktemp)"
+trap 'rm -f "${tempfile}"' EXIT HUP INT TERM
+
+cat > "${tempfile}"
+
+begin_count="$(grep -Fxc "${begin}" "${tempfile}" || true)"
+end_count="$(grep -Fxc "${end}" "${tempfile}" || true)"
+
+if [ "${begin_count}" -ne "${end_count}" ] || [ "${begin_count}" -gt 1 ]; then
+  die "ambiguous NovaLab managed markers in .bashrc"
+fi
+
+if [ "${begin_count}" -eq 1 ]; then
+  begin_line="$(
+    grep -Fnx "${begin}" "${tempfile}" |
+      cut -d: -f1
+  )"
+
+  end_line="$(
+    grep -Fnx "${end}" "${tempfile}" |
+      cut -d: -f1
+  )"
+
+  if [ "${begin_line}" -ge "${end_line}" ]; then
+    die "NovaLab managed markers are reversed in .bashrc"
+  fi
+fi
+
+# Preserve everything except the existing NovaLab-managed block.
+awk -v begin="${begin}" -v end="${end}" '
+  $0 == begin {
+    managed = 1
+    next
+  }
+
+  managed && $0 == end {
+    managed = 0
+    next
+  }
+
+  !managed {
+    print
+  }
+' "${tempfile}"
+
+cat <<'EOF'
+# >>> NovaLab dotfiles >>>
+_novalab_init="${XDG_CONFIG_HOME:-${HOME}/.config}/novalab/bash/init.sh"
+
+if [[ -r "${_novalab_init}" ]]; then
+  source "${_novalab_init}"
+fi
+
+unset _novalab_init
+# <<< NovaLab dotfiles <<<
+EOF
