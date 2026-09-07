@@ -2,6 +2,7 @@
 README.md
 docs/
 docs/**
+install.sh
 
 # LazyDocker is managed only on Docker-role hosts.
 {{- if not (or (eq .profile "docker") (eq .profile "zgx") (and (eq .profile "ubuntulab") .withDocker)) }}

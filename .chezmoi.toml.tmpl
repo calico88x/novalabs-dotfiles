@@ -5,6 +5,8 @@
 {{-   $withDocker = promptBoolOnce . "withDocker" "Enable optional Docker tooling on UbuntuLab" false -}}
 {{- end -}}
 
+sourceDir = {{ .chezmoi.sourceDir | quote }}
+
 [data]
 profile = {{ $profile | quote }}
 withDocker = {{ $withDocker }}
