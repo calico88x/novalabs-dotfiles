@@ -1,0 +1,10 @@
+# Repository-only content.
+README.md
+docs/
+docs/**
+
+# LazyDocker is managed only on Docker-role hosts.
+{{- if not (or (eq .profile "docker") (eq .profile "zgx")) }}
+.config/lazydocker/
+.config/lazydocker/**
+{{- end }}

@@ -1,0 +1,40 @@
+# yaml-language-server: $schema=https://json.schemastore.org/lazydocker.json
+
+gui:
+  scrollHeight: 2
+  language: auto
+  border: rounded
+
+  theme:
+    activeBorderColor:
+      - cyan
+      - bold
+    inactiveBorderColor:
+      - default
+    selectedLineBgColor:
+      - blue
+    optionsTextColor:
+      - cyan
+
+  returnImmediately: false
+  wrapMainPanel: true
+  sidePanelWidth: 0.333
+  showBottomLine: true
+  expandFocusedSidePanel: false
+  screenMode: normal
+  containerStatusHealthStyle: long
+
+logs:
+  timestamps: true
+  since: 60m
+  tail: "300"
+
+stats:
+  maxDuration: 3m
+  graphs:
+    - caption: CPU (%)
+      statPath: DerivedStats.CPUPercentage
+      color: cyan
+    - caption: Memory (%)
+      statPath: DerivedStats.MemoryPercentage
+      color: green
