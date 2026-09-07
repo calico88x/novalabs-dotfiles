@@ -16,7 +16,7 @@ NovaLabs Dotfiles separates ownership into three layers.
 
 | Layer | Owner | Examples |
 |---|---|---|
-| User configuration | ChezMoi | Bash, Git include, Starship, Fastfetch, btop theme, tmux, Vim, LazyGit, LazyDocker |
+| User configuration | ChezMoi | Bash, Git include, Starship, Fastfetch, btop theme, LazyVim, tmux, Vim, LazyGit, LazyDocker |
 | Portable userland tools | Mise | Neovim, ripgrep, fd, fzf, Node, Starship, LazyGit, LazyDocker |
 | System/platform components | OS or vendor | OpenSSH, Docker engine, containerd, NVIDIA platform packages |
 
@@ -40,7 +40,7 @@ flowchart TD
   J --> K["Install portable tools<br/>mise"]
   K --> L["Fresh shell<br/>exec bash -l"]
 
-  J --> M["Managed user config<br/>bash • git • starship • fastfetch • tmux • vim"]
+  J --> M["Managed user config<br/>bash • git • starship • fastfetch • LazyVim • tmux • vim"]
   K --> N["Portable CLI tools<br/>nvim • node • rg • fd • fzf • lazygit • lazydocker"]
 
   H --> O["Externally owned components<br/>Docker engine • containerd • NVIDIA platform tools"]
@@ -88,6 +88,13 @@ flowchart TD
 ├── docs/
 │   └── migration-ledger.md
 ├── private_dot_config/
+│   ├── btop/
+│   ├── mise/
+│   ├── nvim/
+│   ├── fastfetch/
+│   ├── lazygit/
+│   ├── lazydocker/
+│   └── ...
 ├── modify_dot_bashrc
 ├── modify_dot_gitconfig
 ├── dot_tmux.conf
@@ -104,6 +111,7 @@ Important source paths:
 - `.chezmoitemplates/starship/` — per-profile Starship templates
 - `.chezmoitemplates/fastfetch/` — per-profile Fastfetch templates
 - `private_dot_config/btop/themes/novalab.theme.tmpl` — host-colored btop theme
+- `private_dot_config/nvim/` — LazyVim configuration and plugin lockfile
 - `install.sh` — preview-first bootstrap and native package convergence
 
 ## Bootstrap a new Linux host
@@ -342,6 +350,7 @@ Common mappings:
 | `private_dot_config/bat/config` | `~/.config/bat/config` |
 | `private_dot_config/lazygit/config.yml` | `~/.config/lazygit/config.yml` |
 | `private_dot_config/lazydocker/config.yml` | `~/.config/lazydocker/config.yml` |
+| `private_dot_config/nvim/` | `~/.config/nvim/` |
 | `dot_tmux.conf` | `~/.tmux.conf` |
 | `dot_vimrc` | `~/.vimrc` |
 
@@ -362,6 +371,37 @@ Do not replace these with whole-file dotfiles unless that ownership decision is 
 The NovaLabs btop theme is managed separately.
 
 On ZGX, the existing GPU-enabled `/usr/local/bin/btop` is explicitly preserved and is **not** installed through Mise.
+
+### Neovim and LazyVim
+
+Neovim itself is installed and version-pinned by Mise.
+
+LazyVim is configuration, so ChezMoi owns:
+
+```text
+~/.config/nvim/
+```
+
+from:
+
+```text
+private_dot_config/nvim/
+```
+
+The managed LazyVim tree includes:
+
+- `init.lua`
+- `lazyvim.json`
+- `lazy-lock.json`
+- `stylua.toml`
+- `lua/config/`
+- `lua/plugins/`
+
+The committed `lazy-lock.json` preserves plugin revisions across hosts.
+
+On first launch, Neovim bootstraps `lazy.nvim` and installs the LazyVim/plugin set defined by the managed configuration.
+
+Starter-only files such as the LazyVim starter `README.md`, `LICENSE`, `.gitignore`, `.neoconf.json`, and inactive `example.lua` are intentionally not managed.
 
 ### Host visual configuration
 
