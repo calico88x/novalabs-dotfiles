@@ -1,0 +1,98 @@
+schema_version = 1
+
+[theme.shared]
+text_light = "#F7F7FB"
+text_dark = "#161923"
+success = "#A6E3A1"
+error = "#F38BA8"
+root = "#FF6B6B"
+warning = "#F9E2AF"
+
+[theme.btop_graph]
+lime = "#b8f500"
+yellow = "#ffe600"
+amber = "#ffcf33"
+pink = "#ff5ac8"
+magenta = "#ff2bd6"
+rose = "#ff477e"
+
+[theme.os_symbols]
+Alpine = ""
+Debian = ""
+FreeBSD = ""
+Linux = ""
+Raspbian = ""
+Ubuntu = ""
+Unknown = ""
+
+[theme.hosts.proxmox]
+display_name = "Proxmox"
+family = "Ember orange"
+hue_degrees = 18
+shade_1 = "#65311B"
+shade_2 = "#994A29"
+shade_3 = "#D17147"
+shade_4 = "#E1A78E"
+
+[theme.hosts.docker]
+display_name = "Docker LXC"
+family = "Cyan blue"
+hue_degrees = 192
+shade_1 = "#1B5665"
+shade_2 = "#298399"
+shade_3 = "#47B6D1"
+shade_4 = "#8ED0E1"
+
+[theme.hosts.pihole]
+display_name = "Pi-hole"
+family = "Electric lime"
+hue_degrees = 78
+shade_1 = "#4F651B"
+shade_2 = "#779929"
+shade_3 = "#A8D147"
+shade_4 = "#C8E18E"
+
+[theme.hosts.ubuntulab]
+display_name = "UbuntuLab"
+family = "Golden amber"
+hue_degrees = 42
+shade_1 = "#654F1B"
+shade_2 = "#997729"
+shade_3 = "#D1A847"
+shade_4 = "#E1C88E"
+
+[theme.hosts.opnsense]
+display_name = "OPNsense"
+family = "Crimson red"
+hue_degrees = 348
+shade_1 = "#651B2A"
+shade_2 = "#99293F"
+shade_3 = "#D14763"
+shade_4 = "#E18E9F"
+
+[theme.hosts.zgx]
+display_name = "ZGX"
+family = "GPU emerald"
+hue_degrees = 132
+shade_1 = "#1B652A"
+shade_2 = "#29993F"
+shade_3 = "#47D163"
+shade_4 = "#8EE19F"
+
+[theme.hosts.lovelace]
+display_name = "Lovelace"
+family = "Violet purple"
+hue_degrees = 276
+shade_1 = "#471B65"
+shade_2 = "#6C2999"
+shade_3 = "#9A47D1"
+shade_4 = "#C08EE1"
+
+[theme.hosts.worker1]
+display_name = "Worker node"
+family = "Kubernetes cobalt"
+hue_degrees = 222
+shade_1 = "#1B3165"
+shade_2 = "#294A99"
+shade_3 = "#4771D1"
+shade_4 = "#8EA7E1"

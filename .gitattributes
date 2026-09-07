@@ -1,0 +1,21 @@
+*.sh text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.json text eol=lf
+*.jsonc text eol=lf
+*.txt text eol=lf
+*.tsv text eol=lf
+*.vim text eol=lf
+*.py text eol=lf
+*.theme text eol=lf
+
+scripts/* text eol=lf
+
+common/bat/config text eol=lf
+common/vim/vimrc text eol=lf
+common/git/config text eol=lf
+*.tmpl text eol=lf
+.gitattributes text eol=lf
+.editorconfig text eol=lf
+*.md text eol=lf

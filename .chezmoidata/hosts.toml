@@ -1,0 +1,114 @@
+schema_version = 1
+
+[hosts.proxmox]
+display_name = "Proxmox"
+hostnames = ["nova"]
+markers = ["/etc/pve"]
+kernel = "linux"
+os_family = "debian"
+expected_ids = ["debian"]
+expected_architectures = ["amd64"]
+mutation = "managed"
+container_runtime = "none"
+docker = "skip"
+lazydocker = "skip"
+ssh = "systemd-managed"
+
+[hosts.docker]
+display_name = "Docker LXC"
+hostnames = ["docker"]
+markers = []
+kernel = "linux"
+os_family = "debian"
+expected_ids = ["debian", "ubuntu"]
+expected_architectures = ["amd64"]
+mutation = "managed"
+container_runtime = "docker"
+docker = "managed"
+lazydocker = "managed"
+ssh = "systemd-managed"
+
+[hosts.pihole]
+display_name = "Pi-hole"
+hostnames = ["pihole", "pihole2"]
+markers = ["/etc/pihole"]
+kernel = "linux"
+os_family = "debian"
+expected_ids = ["debian", "raspbian"]
+expected_architectures = ["amd64"]
+mutation = "managed"
+container_runtime = "none"
+docker = "skip"
+lazydocker = "skip"
+ssh = "systemd-managed"
+
+[hosts.ubuntulab]
+display_name = "UbuntuLab"
+hostnames = ["ubuntulab", "ubuntu-proxmox"]
+markers = []
+kernel = "linux"
+os_family = "debian"
+expected_ids = ["ubuntu"]
+expected_architectures = ["amd64"]
+mutation = "managed"
+container_runtime = "optional-docker"
+docker = "optional"
+lazydocker = "optional"
+ssh = "systemd-managed"
+
+[hosts.lovelace]
+display_name = "Lovelace"
+hostnames = ["lovelace"]
+markers = []
+kernel = "linux"
+os_family = "debian"
+expected_ids = ["debian"]
+expected_architectures = ["arm64"]
+mutation = "managed"
+container_runtime = "containerd"
+docker = "skip"
+lazydocker = "skip"
+ssh = "systemd-managed"
+
+[hosts.worker1]
+display_name = "Worker node"
+hostnames = ["k8s-worker-01"]
+markers = []
+kernel = "linux"
+os_family = "debian"
+expected_ids = ["debian"]
+expected_architectures = ["amd64"]
+mutation = "managed"
+container_runtime = "containerd"
+docker = "skip"
+lazydocker = "skip"
+ssh = "systemd-managed"
+
+[hosts.zgx]
+display_name = "ZGX"
+hostnames = ["zgx", "zgx-40e6"]
+markers = []
+kernel = "linux"
+os_family = "debian"
+expected_ids = ["ubuntu"]
+expected_architectures = ["arm64"]
+mutation = "managed"
+container_runtime = "docker"
+docker = "managed"
+lazydocker = "managed"
+ssh = "systemd-managed"
+preserve_present_tools = ["btop"]
+
+[hosts.opnsense]
+display_name = "OPNsense"
+hostnames = ["opnsense", "opnsense2"]
+markers = ["/usr/local/etc/inc/config.inc"]
+kernel = "freebsd"
+os_family = "freebsd"
+expected_ids = ["opnsense", "freebsd"]
+expected_architectures = ["amd64"]
+mutation = "stage-only"
+container_runtime = "none"
+docker = "skip"
+lazydocker = "skip"
+ssh = "gui-managed"
