@@ -1,0 +1,62 @@
+#!/bin/sh
+set -eu
+
+begin='# >>> NovaLab shared Git configuration >>>'
+end='# <<< NovaLab shared Git configuration <<<'
+
+die() {
+  printf 'novalabs-dotfiles: %s\n' "$*" >&2
+  exit 1
+}
+
+tempfile="$(mktemp)"
+trap 'rm -f "${tempfile}"' EXIT HUP INT TERM
+
+cat > "${tempfile}"
+
+begin_count="$(grep -Fxc "${begin}" "${tempfile}" || true)"
+end_count="$(grep -Fxc "${end}" "${tempfile}" || true)"
+
+if [ "${begin_count}" -ne "${end_count}" ] || [ "${begin_count}" -gt 1 ]; then
+  die "ambiguous NovaLab managed markers in .gitconfig"
+fi
+
+if [ "${begin_count}" -eq 1 ]; then
+  begin_line="$(
+    grep -Fnx "${begin}" "${tempfile}" |
+      cut -d: -f1
+  )"
+
+  end_line="$(
+    grep -Fnx "${end}" "${tempfile}" |
+      cut -d: -f1
+  )"
+
+  if [ "${begin_line}" -ge "${end_line}" ]; then
+    die "NovaLab managed markers are reversed in .gitconfig"
+  fi
+fi
+
+cat <<'EOF'
+# >>> NovaLab shared Git configuration >>>
+[include]
+    path = ~/.config/novalab/git/config
+# <<< NovaLab shared Git configuration <<<
+EOF
+
+# Preserve all personal configuration except the previous managed block.
+awk -v begin="${begin}" -v end="${end}" '
+  $0 == begin {
+    managed = 1
+    next
+  }
+
+  managed && $0 == end {
+    managed = 0
+    next
+  }
+
+  !managed {
+    print
+  }
+' "${tempfile}"

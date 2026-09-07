@@ -1,0 +1,51 @@
+[init]
+    defaultBranch = main
+
+[core]
+    editor = vim
+    autocrlf = input
+    whitespace = trailing-space,space-before-tab
+
+[color]
+    ui = auto
+
+[column]
+    ui = auto
+
+[fetch]
+    prune = true
+
+[push]
+    default = simple
+    autoSetupRemote = true
+
+[pull]
+    ff = only
+
+[rebase]
+    autoStash = true
+
+[rerere]
+    enabled = true
+    autoUpdate = true
+
+[diff]
+    algorithm = histogram
+    mnemonicPrefix = true
+    renames = true
+    colorMoved = default
+
+[merge]
+    conflictStyle = zdiff3
+
+[commit]
+    verbose = true
+
+[branch]
+    sort = -committerdate
+
+[tag]
+    sort = version:refname
+
+[protocol]
+    version = 2

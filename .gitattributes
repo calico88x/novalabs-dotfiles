@@ -21,3 +21,4 @@ common/git/config text eol=lf
 *.md text eol=lf
 
 modify_* text eol=lf
+dot_config/novalab/git/config text eol=lf
