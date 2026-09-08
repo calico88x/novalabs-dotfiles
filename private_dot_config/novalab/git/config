@@ -36,7 +36,7 @@
     colorMoved = default
 
 [merge]
-    conflictStyle = zdiff3
+    conflictStyle = diff3
 
 [commit]
     verbose = true
