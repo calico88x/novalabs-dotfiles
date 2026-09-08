@@ -73,6 +73,7 @@ case "${ID:-}" in
 esac
 
 native_packages="
+build-essential
 ca-certificates
 curl
 git

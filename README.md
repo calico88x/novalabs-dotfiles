@@ -17,7 +17,7 @@ NovaLabs Dotfiles separates ownership into three layers.
 | Layer | Owner | Examples |
 |---|---|---|
 | User configuration | ChezMoi | Bash, Git include, Starship, Fastfetch, btop theme, LazyVim, tmux, Vim, LazyGit, LazyDocker |
-| Portable userland tools | Mise | Neovim, ripgrep, fd, fzf, Node, Starship, LazyGit, LazyDocker |
+| Portable userland tools | Mise | Neovim, Node, Rust, Tree-sitter CLI, ripgrep, fd, fzf, Starship, LazyGit, LazyDocker |
 | System/platform components | OS or vendor | OpenSSH, Docker engine, containerd, NVIDIA platform packages |
 
 Host policy is declared in `.chezmoidata/hosts.toml`.
@@ -41,7 +41,7 @@ flowchart TD
   K --> L["Fresh shell<br/>exec bash -l"]
 
   J --> M["Managed user config<br/>bash • git • starship • fastfetch • LazyVim • tmux • vim"]
-  K --> N["Portable CLI tools<br/>nvim • node • rg • fd • fzf • lazygit • lazydocker"]
+  K --> N["Portable CLI tools<br/>nvim • node • rust • tree-sitter • rg • fd • fzf • lazygit • lazydocker"]
 
   H --> O["Externally owned components<br/>Docker engine • containerd • NVIDIA platform tools"]
 
@@ -376,6 +376,17 @@ On ZGX, the existing GPU-enabled `/usr/local/bin/btop` is explicitly preserved a
 
 Neovim itself is installed and version-pinned by Mise.
 
+Tree-sitter support uses a Mise-managed Rust toolchain and a source-built Tree-sitter CLI:
+
+```text
+Rust:             1.88.0
+Tree-sitter CLI:  0.26.9
+```
+
+Tree-sitter CLI is built through Cargo with default features disabled. This avoids relying on upstream Linux binaries whose glibc requirements may be newer than some NovaLabs hosts.
+
+The Debian-family native baseline includes `build-essential` so Tree-sitter CLI and parser modules have a C compiler and linker available.
+
 LazyVim is configuration, so ChezMoi owns:
 
 ```text
@@ -551,6 +562,7 @@ If the bootstrap pins are intentionally changed, validate the new Mise and ChezM
 The current Debian-family bootstrap baseline is:
 
 ```text
+build-essential
 ca-certificates
 curl
 git
