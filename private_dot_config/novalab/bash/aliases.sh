@@ -21,3 +21,8 @@ fi
 if command -v lazydocker >/dev/null 2>&1; then
   alias lzd='lazydocker'
 fi
+
+# LSD for LS
+if command -v lsd >/dev/null 2>&1; then
+  alias ls='lsd -lah --group-dirs=first'
+fi

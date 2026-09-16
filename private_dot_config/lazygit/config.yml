@@ -10,36 +10,47 @@ gui:
   mainPanelSplitMode: flexible
   wrapLinesInStagingView: true
   language: auto
-  timeFormat: '2006-01-02'
-  shortTimeFormat: '15:04'
+  timeFormat: "2006-01-02"
+  shortTimeFormat: "15:04"
 
+  # DRACULA
   theme:
     activeBorderColor:
-      - '#89b4fa'
+      - "#FF79C6"
       - bold
     inactiveBorderColor:
-      - '#6c7086'
+      - "#BD93F9"
+
     searchingActiveBorderColor:
-      - '#89dceb'
+      - "#8BE9FD"
       - bold
+
     optionsTextColor:
-      - '#b4befe'
+      - "#6272A4"
+
     selectedLineBgColor:
-      - '#313244'
+      - "#6272A4"
+
     inactiveViewSelectedLineBgColor:
-      - '#252538'
+      - bold
+
     cherryPickedCommitFgColor:
-      - '#89b4fa'
+      - "#6272A4"
+
     cherryPickedCommitBgColor:
-      - '#313244'
+      - "#8BE9FD"
+
     markedBaseCommitFgColor:
-      - '#1e1e2e'
+      - "#8BE9FD"
+
     markedBaseCommitBgColor:
-      - '#f9e2af'
+      - "#F1FA8C"
+
     unstagedChangesColor:
-      - '#f38ba8'
+      - "#FF5555"
+
     defaultFgColor:
-      - '#cdd6f4'
+      - "#F8F8F2"
 
   commitLength:
     show: true
@@ -53,7 +64,7 @@ gui:
   showCommandLog: true
   showBottomLine: true
   showPanelJumps: true
-  nerdFontsVersion: '3'
+  nerdFontsVersion: "3"
   showFileIcons: true
   commitHashLength: 8
   showDivergenceFromBaseBranch: arrowAndNumber
