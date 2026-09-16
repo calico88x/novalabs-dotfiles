@@ -1,7 +1,7 @@
 # NovaLab common Superfile configuration
 
 # File and directory editors inherit EDITOR and VISUAL from the common shell.
-editor = ""
+editor = "nvim"
 dir_editor = ""
 
 # Software versions are managed centrally by the bootstrap layer.
@@ -12,7 +12,7 @@ cd_on_quit = false
 
 # Preview behavior.
 default_open_file_preview = true
-show_image_preview = false
+show_image_preview = true
 show_panel_footer_info = true
 
 # Begin in the directory from which Superfile was launched.
@@ -38,7 +38,7 @@ file_panel_extra_columns = 0
 file_panel_name_percent = 60
 
 # Shared NovaLab visual theme.
-theme = "novalab"
+theme = "dracula"
 
 # Use Superfile's built-in Chroma renderer for predictable SSH previews.
 code_previewer = ""
