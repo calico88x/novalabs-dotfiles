@@ -13,6 +13,8 @@ then
   alias fd='fdfind'
 fi
 
+
+
 # Short names for the shared terminal interfaces.
 if command -v lazygit >/dev/null 2>&1; then
   alias lzg='lazygit'
@@ -22,7 +24,12 @@ if command -v lazydocker >/dev/null 2>&1; then
   alias lzd='lazydocker'
 fi
 
+# LSD for LL
+if command -v lsd >/dev/null 2>&1; then
+  alias ll='lsd -lahF --group-dirs=first'
+fi
+
 # LSD for LS
 if command -v lsd >/dev/null 2>&1; then
-  alias ls='lsd -lah --group-dirs=first'
+  alias ls='lsd'
 fi
