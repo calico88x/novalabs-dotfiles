@@ -29,37 +29,37 @@ Unknown = ""
 display_name = "Proxmox"
 family = "Ember orange"
 hue_degrees = 18
-shade_1 = "#65311B"
-shade_2 = "#994A29"
-shade_3 = "#D17147"
-shade_4 = "#E1A78E"
+shade_1 = "#ff7b00"
+shade_2 = "#a29692"
+shade_3 = "#d8cac4"
+shade_4 = "#ffa57e"
 
 [theme.hosts.docker]
 display_name = "Docker LXC"
 family = "Cyan blue"
 hue_degrees = 192
-shade_1 = "#1B5665"
-shade_2 = "#298399"
-shade_3 = "#47B6D1"
+shade_1 = "#00d9ff"
+shade_2 = "#8f9596"
+shade_3 = "#d6e0e3"
 shade_4 = "#8ED0E1"
 
 [theme.hosts.pihole]
 display_name = "Pi-hole"
 family = "Electric lime"
 hue_degrees = 78
-shade_1 = "#4F651B"
-shade_2 = "#779929"
-shade_3 = "#A8D147"
-shade_4 = "#C8E18E"
+shade_1 = "#c00000"
+shade_2 = "#aee03c"
+shade_3 = "#92b73a"
+shade_4 = "#59721f"
 
 [theme.hosts.ubuntulab]
 display_name = "UbuntuLab"
 family = "Golden amber"
 hue_degrees = 42
-shade_1 = "#654F1B"
-shade_2 = "#997729"
-shade_3 = "#D1A847"
-shade_4 = "#E1C88E"
+shade_1 = "#ff5e00"
+shade_2 = "#8d7d75"
+shade_3 = "#bc580c"
+shade_4 = "#e27232"
 
 [theme.hosts.opnsense]
 display_name = "OPNsense"
@@ -74,10 +74,10 @@ shade_4 = "#E18E9F"
 display_name = "ZGX"
 family = "GPU emerald"
 hue_degrees = 132
-shade_1 = "#1B652A"
-shade_2 = "#29993F"
-shade_3 = "#47D163"
-shade_4 = "#8EE19F"
+shade_1 = "#68cf00"
+shade_2 = "#888f81"
+shade_3 = "#76c12a"
+shade_4 = "#a6e368"
 
 [theme.hosts.lovelace]
 display_name = "Lovelace"
@@ -86,7 +86,7 @@ hue_degrees = 276
 shade_1 = "#471B65"
 shade_2 = "#6C2999"
 shade_3 = "#9A47D1"
-shade_4 = "#C08EE1"
+shade_4 = "#af63e1"
 
 [theme.hosts.worker1]
 display_name = "Worker node"
@@ -95,4 +95,4 @@ hue_degrees = 222
 shade_1 = "#1B3165"
 shade_2 = "#294A99"
 shade_3 = "#4771D1"
-shade_4 = "#8EA7E1"
+shade_4 = "#6e91e3"
