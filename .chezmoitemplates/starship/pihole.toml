@@ -10,10 +10,10 @@ add_newline = false
 command_timeout = 700
 
 [palettes.pihole]
-shade_1 = "#4F651B"
-shade_2 = "#779929"
-shade_3 = "#A8D147"
-shade_4 = "#C8E18E"
+shade_1 = "#c00000"
+shade_2 = "#aee03c"
+shade_3 = "#92b73a"
+shade_4 = "#59721f"
 text_light = "#F7F7FB"
 text_dark = "#161923"
 success = "#A6E3A1"

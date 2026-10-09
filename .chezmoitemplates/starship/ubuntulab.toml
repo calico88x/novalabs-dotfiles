@@ -10,10 +10,10 @@ add_newline = false
 command_timeout = 700
 
 [palettes.ubuntulab]
-shade_1 = "#654F1B"
-shade_2 = "#997729"
-shade_3 = "#D1A847"
-shade_4 = "#E1C88E"
+shade_1 = "#ff5e00"
+shade_2 = "#8d7d75"
+shade_3 = "#bc580c"
+shade_4 = "#e27232"
 text_light = "#F7F7FB"
 text_dark = "#161923"
 success = "#A6E3A1"

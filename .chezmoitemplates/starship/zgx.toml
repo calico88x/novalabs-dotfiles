@@ -10,10 +10,10 @@ add_newline = false
 command_timeout = 700
 
 [palettes.zgx]
-shade_1 = "#1B652A"
-shade_2 = "#29993F"
-shade_3 = "#47D163"
-shade_4 = "#8EE19F"
+shade_1 = "#68cf00"
+shade_2 = "#888f81"
+shade_3 = "#76c12a"
+shade_4 = "#a6e368"
 text_light = "#F7F7FB"
 text_dark = "#161923"
 success = "#A6E3A1"

@@ -10,10 +10,10 @@ add_newline = false
 command_timeout = 700
 
 [palettes.proxmox]
-shade_1 = "#65311B"
-shade_2 = "#994A29"
-shade_3 = "#D17147"
-shade_4 = "#E1A78E"
+shade_1 = "#ff7b00"
+shade_2 = "#a29692"
+shade_3 = "#d8cac4"
+shade_4 = "#ffa57e"
 text_light = "#F7F7FB"
 text_dark = "#161923"
 success = "#A6E3A1"
