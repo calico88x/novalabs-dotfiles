@@ -12,9 +12,9 @@ command_timeout = 700
 [palettes.ubuntulab]
 shade_1 = "#ff5e00"
 shade_2 = "#8d7d75"
-shade_3 = "#bc580c"
-shade_4 = "#e27232"
-text_light = "#F7F7FB"
+shade_3 = "#dc9763"
+shade_4 = "#ee864a"
+text_light = "#161923"
 text_dark = "#161923"
 success = "#A6E3A1"
 error = "#F38BA8"

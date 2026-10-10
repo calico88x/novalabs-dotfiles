@@ -12,9 +12,9 @@ command_timeout = 700
 [palettes.docker]
 shade_1 = "#00d9ff"
 shade_2 = "#8f9596"
-shade_3 = "#d6e0e3"
+shade_3 = "#bcd7e0"
 shade_4 = "#8ED0E1"
-text_light = "#F7F7FB"
+text_light = "#161923"
 text_dark = "#161923"
 success = "#A6E3A1"
 error = "#F38BA8"
