@@ -18,7 +18,7 @@ text_light = "#F7F7FB"
 text_dark = "#161923"
 success = "#A6E3A1"
 error = "#F38BA8"
-root = "#FF6B6B"
+root = "#ff9c6b"
 
 [os]
 disabled = false

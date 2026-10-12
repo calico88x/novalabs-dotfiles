@@ -11,14 +11,14 @@ command_timeout = 700
 
 [palettes.zgx]
 shade_1 = "#10FF2B"
-shade_2 = "#858f81"
-shade_3 = "#b9ecbb"
-shade_4 = "#83d76c"
+shade_2 = "#a3a3a3"
+shade_3 = "#8ceb90"
+shade_4 = "#72da55"
 text_light = "#161923"
 text_dark = "#161923"
 success = "#A6E3A1"
 error = "#F38BA8"
-root = "#FF6B6B"
+root = "#ff9c6b"
 
 [os]
 disabled = false
