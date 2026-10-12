@@ -10,10 +10,10 @@ add_newline = false
 command_timeout = 700
 
 [palettes.docker]
-shade_1 = "#00d9ff"
+shade_1 = "#326CE5"
 shade_2 = "#a3a3a3"
-shade_3 = "#bcd7e0"
-shade_4 = "#8ED0E1"
+shade_3 = "#7193dd"
+shade_4 = "#4268bc"
 text_light = "#161923"
 text_dark = "#161923"
 success = "#A6E3A1"
