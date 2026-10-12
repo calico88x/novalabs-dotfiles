@@ -30,18 +30,18 @@ display_name = "Proxmox"
 family = "Ember orange"
 hue_degrees = 18
 shade_1 = "#ff7b00"
-shade_2 = "#a29692"
-shade_3 = "#d8cac4"
+shade_2 = "#b4b4b4"
+shade_3 = "#d9d5d3"
 shade_4 = "#ffa57e"
 
 [theme.hosts.docker]
 display_name = "Docker LXC"
 family = "Cyan blue"
 hue_degrees = 192
-shade_1 = "#00d9ff"
-shade_2 = "#8f9596"
-shade_3 = "#d6e0e3"
-shade_4 = "#8ED0E1"
+shade_1 = "#326CE5"
+shade_2 = "#a3a3a3"
+shade_3 = "#7193dd"
+shade_4 = "#4268bc"
 
 [theme.hosts.pihole]
 display_name = "Pi-hole"
@@ -58,8 +58,8 @@ family = "Golden amber"
 hue_degrees = 42
 shade_1 = "#ff5e00"
 shade_2 = "#8d7d75"
-shade_3 = "#bc580c"
-shade_4 = "#e27232"
+shade_3 = "#dc9763"
+shade_4 = "#ee864a"
 
 [theme.hosts.opnsense]
 display_name = "OPNsense"
@@ -74,10 +74,10 @@ shade_4 = "#E18E9F"
 display_name = "ZGX"
 family = "GPU emerald"
 hue_degrees = 132
-shade_1 = "#68cf00"
-shade_2 = "#888f81"
-shade_3 = "#76c12a"
-shade_4 = "#a6e368"
+shade_1 = "#76B900"
+shade_2 = "#a3a3a3"
+shade_3 = "#b5dd70"
+shade_4 = "#8bb83e"
 
 [theme.hosts.lovelace]
 display_name = "Lovelace"
