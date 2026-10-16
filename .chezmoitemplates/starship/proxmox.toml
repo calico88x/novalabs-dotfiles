@@ -11,7 +11,7 @@ command_timeout = 700
 
 [palettes.proxmox]
 shade_1 = "#ff7b00"
-shade_2 = "#b4b4b4"
+shade_2 = "#b4b4b4c6"
 shade_3 = "#d9d5d3"
 shade_4 = "#ffa57e"
 text_light = "#161923"
