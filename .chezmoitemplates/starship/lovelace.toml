@@ -12,7 +12,7 @@ command_timeout = 700
 [palettes.lovelace]
 shade_1 = "#471B65"
 shade_2 = "#6C2999"
-shade_3 = "#9A47D1"
+shade_3 = "#d9d5d3"
 shade_4 = "#C08EE1"
 text_light = "#F7F7FB"
 text_dark = "#161923"

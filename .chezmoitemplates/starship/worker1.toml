@@ -12,7 +12,7 @@ command_timeout = 700
 [palettes.worker]
 shade_1 = "#1B3165"
 shade_2 = "#294A99"
-shade_3 = "#4771D1"
+shade_3 = "#d9d5d3"
 shade_4 = "#8EA7E1"
 text_light = "#F7F7FB"
 text_dark = "#161923"

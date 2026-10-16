@@ -12,7 +12,7 @@ command_timeout = 700
 [palettes.opnsense]
 shade_1 = "#651B2A"
 shade_2 = "#99293F"
-shade_3 = "#D14763"
+shade_3 = "#d9d5d3"
 shade_4 = "#E18E9F"
 text_light = "#F7F7FB"
 text_dark = "#161923"
