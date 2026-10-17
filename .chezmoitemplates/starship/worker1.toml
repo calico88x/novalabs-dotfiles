@@ -10,9 +10,9 @@ add_newline = false
 command_timeout = 700
 
 [palettes.worker]
-shade_1 = "#1B3165"
-shade_2 = "#294A99"
-shade_3 = "#d9d5d3"
+shade_1 = "#294A99"
+shade_2 = "#525252"
+shade_3 = "#767676"
 shade_4 = "#5a85ea"
 text_light = "#F7F7FB"
 text_dark = "#161923"
@@ -22,7 +22,7 @@ root = "#ff9c6b"
 
 [os]
 disabled = false
-style = "fg:text_light bg:shade_1"
+style = "fg:text_dark bg:shade_1"
 format = "[ $symbol ]($style)"
 
 [os.symbols]
@@ -37,7 +37,7 @@ Unknown = ""
 [hostname]
 ssh_only = false
 trim_at = ""
-style = "fg:text_light bg:shade_1"
+style = "fg:text_dark bg:shade_1"
 format = "[$hostname ]($style)"
 
 [directory]
