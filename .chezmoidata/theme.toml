@@ -11,7 +11,7 @@ warning = "#F9E2AF"
 [theme.btop_graph]
 lime = "#b8f500"
 yellow = "#ffe600"
-amber = "#ffcf33"
+amber = "#ff9100"
 pink = "#ff5ac8"
 magenta = "#ff2bd6"
 rose = "#ff477e"
