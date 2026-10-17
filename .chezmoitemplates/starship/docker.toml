@@ -22,7 +22,7 @@ root = "#ff9c6b"
 
 [os]
 disabled = false
-style = "fg:text_light bg:shade_1"
+style = "fg:text_dark bg:shade_1"
 format = "[ $symbol ]($style)"
 
 [os.symbols]
@@ -31,13 +31,13 @@ Debian = ""
 FreeBSD = ""
 Linux = ""
 Raspbian = ""
-Ubuntu = ""
+Ubuntu = ""
 Unknown = ""
 
 [hostname]
 ssh_only = false
 trim_at = ""
-style = "fg:text_light bg:shade_1"
+style = "fg:text_dark bg:shade_1"
 format = "[$hostname ]($style)"
 
 [directory]
