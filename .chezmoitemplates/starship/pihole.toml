@@ -12,9 +12,9 @@ command_timeout = 700
 [palettes.pihole]
 shade_1 = "#c12146"
 shade_2 = "#418636"
-shade_3 = "#d9d5d3"
-shade_4 = "#999999"
-text_light = "#161923"
+shade_2 = "#525252"
+shade_3 = "#767676"
+text_light = "#F7F7FB"
 text_dark = "#161923"
 success = "#A6E3A1"
 error = "#F38BA8"
