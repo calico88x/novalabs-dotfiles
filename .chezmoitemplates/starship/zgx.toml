@@ -102,7 +102,7 @@ format = "[ 󰔟 $duration ]($style)"
 [time]
 disabled = false
 time_format = "%H:%M"
-style = "fg:text_dark bg:shade_1"
+style = "fg:text_dark bg:shade_4"
 format = "[  $time ]($style)"
 
 [custom.user_marker]
