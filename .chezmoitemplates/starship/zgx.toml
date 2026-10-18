@@ -61,7 +61,7 @@ truncation_length = 28
 truncation_symbol = "…"
 
 [git_status]
-style = "fg:text_dark bg:shade_3"
+style = "fg:text_dark bg:shade_4"
 format = "[$all_status$ahead_behind ]($style)"
 
 [localip]
