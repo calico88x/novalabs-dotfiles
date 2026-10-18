@@ -2,7 +2,7 @@
 "$schema" = "https://starship.rs/config-schema.json"
 
 format = """
-[](fg:shade_1)$os$hostname[](fg:shade_1 bg:shade_2)$directory[](fg:shade_2 bg:shade_3)$git_branch$git_status$localip[](fg:shade_3 bg:shade_4)$docker_context$kubernetes$cmd_duration$time[](fg:shade_4)$line_break${custom.user_marker}${custom.root_marker}$character
+[](fg:shade_1)$os$hostname[](fg:shade_1 bg:shade_2)$directory[](fg:shade_2 bg:shade_4)$git_branch$git_status[](fg:shade_4 bg:shade_3)$localip[](fg:shade_3 bg:shade_4)$docker_context$kubernetes$python$conda$cmd_duration$time[](fg:shade_4)$line_break${custom.user_marker}${custom.root_marker}$character
 """
 
 palette = "proxmox"
