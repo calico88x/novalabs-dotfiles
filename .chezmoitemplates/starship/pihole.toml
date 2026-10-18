@@ -81,6 +81,18 @@ symbol = "󱃾 "
 style = "fg:text_dark bg:shade_4"
 format = '[ $symbol$context( \($namespace\)) ]($style)'
 
+[python]
+symbol = " "
+style = "fg:text_dark bg:shade_4"
+format = "[ $symbol$version ]($style)"
+version_format = "v${raw}"
+
+[conda]
+symbol = " "
+style = "fg:text_dark bg:shade_4"
+format = "[ $symbol$environment ]($style)"
+ignore_base = false
+
 [cmd_duration]
 min_time = 2000
 show_milliseconds = false
