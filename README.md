@@ -159,7 +159,7 @@ Install the pinned Mise bootstrap:
 
 ```bash
 curl -fsSL https://mise.run |
-  MISE_VERSION=v2026.8.5 \
+  MISE_VERSION=v2026.8.9 \
   MISE_INSTALL_PATH="$HOME/.local/bin/mise" \
   sh
 ```
@@ -379,7 +379,7 @@ Neovim itself is installed and version-pinned by Mise.
 Tree-sitter support uses a Mise-managed Rust toolchain and a source-built Tree-sitter CLI:
 
 ```text
-Rust:             1.88.0
+Rust:             1.99.1
 Tree-sitter CLI:  0.26.9
 ```
 

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-MISE_VERSION="2026.8.5"
+MISE_VERSION="2026.8.9"
 CHEZMOI_VERSION="2.72.1"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
