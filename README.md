@@ -549,7 +549,7 @@ Tool upgrades are deliberate repository changes.
 Bootstrap infrastructure is pinned separately in `install.sh`:
 
 ```text
-Mise:     2026.8.5
+Mise:     2026.8.9
 ChezMoi:  2.72.1
 ```
 
