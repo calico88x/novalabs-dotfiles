@@ -2,7 +2,7 @@
 "$schema" = "https://starship.rs/config-schema.json"
 
 format = """
-[](fg:shade_1)$os$hostname[](fg:shade_1 bg:shade_2)$directory[](fg:shade_2 bg:shade_4)$git_branch$git_status[](fg:shade_4 bg:shade_3)$localip[](fg:shade_3 bg:shade_4)$docker_context$kubernetes$python$conda$cmd_duration$time[](fg:shade_4)$line_break${custom.user_marker}${custom.root_marker}$character
+[](fg:shade_1)$os$hostname[](fg:shade_1 bg:shade_2)$directory[](fg:shade_2 bg:shade_4)$git_branch$git_status[](fg:shade_4 bg:shade_3)$localip[](fg:shade_3 bg:shade_1)$docker_context$kubernetes[](fg:shade_1 bg:shade_4)$python$conda$cmd_duration$time(fg:shade_4)[](fg:shade_4)$line_break${custom.user_marker}${custom.root_marker}$character
 """
 
 palette = "ubuntulab"
@@ -22,7 +22,7 @@ root = "#ff9c6b"
 
 [os]
 disabled = false
-style = "fg:text_dark bg:shade_1"
+style = "fg:text_light bg:shade_1"
 format = "[ $symbol ]($style)"
 
 [os.symbols]
@@ -37,7 +37,7 @@ Unknown = ""
 [hostname]
 ssh_only = false
 trim_at = ""
-style = "fg:text_dark bg:shade_1"
+style = "fg:text_light bg:shade_1"
 format = "[$hostname ]($style)"
 
 [directory]
@@ -72,13 +72,13 @@ format = "[ 󰩟 $localipv4 ]($style)"
 
 [docker_context]
 symbol = " "
-style = "fg:text_dark bg:shade_4"
+style = "fg:text_light bg:shade_1"
 format = "[ $symbol$context ]($style)"
 
 [kubernetes]
 disabled = false
 symbol = "󱃾 "
-style = "fg:text_dark bg:shade_4"
+style = "fg:text_light bg:shade_1"
 format = '[ $symbol$context( \($namespace\)) ]($style)'
 
 [python]
