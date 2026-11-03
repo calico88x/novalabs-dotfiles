@@ -33,3 +33,9 @@ fi
 if command -v lsd >/dev/null 2>&1; then
   alias ls='lsd'
 fi
+
+# Kubecolor for kubectl
+if command -v kubecolor >/dev/null 2>&1; then
+  alias kga='kubecolor get all --all-namespaces'
+  alias kgp='kubecolor get pods --all-namespaces -o wide'
+fi

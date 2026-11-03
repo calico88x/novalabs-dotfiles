@@ -78,7 +78,7 @@ format = "[ $symbol$context ]($style)"
 [kubernetes]
 disabled = false
 symbol = "󱃾 "
-style = "fg:text_dark bg:shade_4"
+style = "fg:text_dark bg:shade_1"
 format = '[ $symbol$context( \($namespace\)) ]($style)'
 
 [python]
