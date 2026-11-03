@@ -37,7 +37,7 @@ Unknown = ""
 [hostname]
 ssh_only = false
 trim_at = ""
-style = "fg:text_light bg:shade_1"
+style = "bold fg:text_dark bg:shade_1"
 format = "[$hostname ]($style)"
 
 [directory]
@@ -72,13 +72,13 @@ format = "[ 󰩟 $localipv4 ]($style)"
 
 [docker_context]
 symbol = " "
-style = "fg:text_light bg:shade_1"
+style = "fg:text_dark bg:shade_1"
 format = "[ $symbol$context ]($style)"
 
 [kubernetes]
 disabled = false
 symbol = "󱃾 "
-style = "fg:text_light bg:shade_1"
+style = "fg:text_dark bg:shade_1"
 format = '[ $symbol$context( \($namespace\)) ]($style)'
 
 [python]

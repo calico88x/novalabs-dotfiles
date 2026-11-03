@@ -37,7 +37,7 @@ Unknown = ""
 [hostname]
 ssh_only = false
 trim_at = ""
-style = "fg:text_light bg:shade_1"
+style = "bold fg:text_light bg:shade_1"
 format = "[$hostname ]($style)"
 
 [directory]
