@@ -27,7 +27,7 @@ format = "[ $symbol ]($style)"
 
 [os.symbols]
 Alpine = ""
-Debian = ""
+Debian = ""
 FreeBSD = ""
 Linux = ""
 Raspbian = ""
