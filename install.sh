@@ -6,9 +6,10 @@ CHEZMOI_VERSION="2.72.1"
 
 repo_root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 mode="preview"
+prune=false
 
 usage() {
-    printf 'Usage: %s [--apply]\n' "$0"
+    printf 'Usage: %s [--apply] [--prune]\n' "$0"
 }
 
 die() {
@@ -16,21 +17,30 @@ die() {
     exit 1
 }
 
-case "${1:-}" in
-    "")
-        ;;
-    --apply)
-        mode="apply"
-        ;;
-    -h|--help)
-        usage
-        exit 0
-        ;;
-    *)
-        usage >&2
-        exit 2
-        ;;
-esac
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --apply)
+            mode="apply"
+            ;;
+        --prune)
+            prune=true
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            usage >&2
+            exit 2
+            ;;
+    esac
+
+    shift
+done
+
+if [ "$prune" = true ] && [ "$mode" != "apply" ]; then
+    die "--prune requires --apply"
+fi
 
 if [ "$(id -u)" -eq 0 ]; then
     die "bootstrap must run as a normal user, not root"
@@ -217,5 +227,13 @@ chezmoi apply
 
 printf '==> Installing pinned Mise toolchain\n'
 "$mise_bin" install
+
+printf '==> Auditing unused Mise tool versions\n'
+"$mise_bin" ls --prunable
+
+if [ "$prune" = true ]; then
+    printf '==> Pruning unused Mise installations\n'
+    "$mise_bin" prune
+fi
 
 printf '%s\n' "NovaLabs bootstrap completed successfully."

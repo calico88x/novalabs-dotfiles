@@ -10,6 +10,57 @@ ChezMoi + Mise managed configuration for NovaLabs hosts.
 
 The repository is designed around a simple rule: **manage user configuration centrally without taking ownership of platform components that are already managed correctly by the operating system or vendor.**
 
+## 🔄 Update an existing host
+
+> **For previously enrolled Linux hosts.** Use this workflow to synchronize
+> the latest NovaLabs configuration and Mise-managed tools.
+
+### 1. Synchronize and preview
+
+```bash
+cd ~/novalabs-dotfiles
+git pull --ff-only
+
+# Preview bootstrap and native package changes
+./install.sh
+
+# Inspect pending ChezMoi changes
+chezmoi diff
+
+# Verify without applying configuration changes
+chezmoi apply --dry-run --verbose
+```
+
+Review the output before proceeding.
+
+### 2. Apply and reload
+
+If the preview is correct:
+
+```bash
+./install.sh --apply
+exec bash -l
+```
+
+This reconciles the host configuration, installs pinned Mise tools,
+and reports unused Mise installations without deleting them.
+
+### Important notes
+
+- **Fleet rollout:** Update one representative host before deploying
+  changes across the fleet.
+- **Garbage collection:** Use `./install.sh --apply --prune` only when
+  explicitly performing Mise cleanup. See
+  [Mise garbage collection](#mise-garbage-collection).
+- **ChezMoi scripts:** `chezmoi diff` may display eligible run scripts
+  even when managed files have converged. Review these separately.
+
+---
+
+**New host?** See [Bootstrap a new Linux host](#bootstrap-a-new-linux-host)
+for first-time enrollment.
+
+
 ## Architecture
 
 NovaLabs Dotfiles separates ownership into three layers.
@@ -217,35 +268,6 @@ exec bash -l
 ```
 
 The bootstrap runs host validation before any `sudo`, native package installation, or ChezMoi apply.
-
-## Update an existing host
-
-Use this workflow after a repository change:
-
-```bash
-cd ~/novalabs-dotfiles
-git pull --ff-only
-
-# Preview native/bootstrap behavior.
-./install.sh
-
-# Review user configuration changes.
-chezmoi diff
-
-# Verify the apply path without changing files.
-chezmoi apply --dry-run --verbose
-```
-
-If the diff and dry-run are correct:
-
-```bash
-./install.sh --apply
-exec bash -l
-```
-
-For changes that affect package ownership, host policy, templates or bootstrap behavior, update **one representative host first** before rolling the change across the fleet.
-
-`chezmoi diff` may still show eligible `.chezmoiscripts` entries after file state has converged. Review file/config differences separately from run-script eligibility.
 
 ## Add a portable tool
 
@@ -666,6 +688,26 @@ For shell-script changes:
 ```powershell
 wsl bash -n /mnt/c/Users/Nova/workspaces/novalabs-dotfiles/install.sh
 ```
+
+## Mise garbage collection
+
+Mise manages portable CLI tool installations separately from
+the operating system's package manager.
+
+Normal reconciliation (`./install.sh --apply`) installs required
+tool versions and reports unused installations.
+
+Unused tools are not automatically deleted.
+
+To explicitly remove unused Mise installations:
+
+    ./install.sh --apply --prune
+
+Cleanup uses Mise's native prune operation rather than
+manually deleting installation directories.
+
+Review Rust toolchains and other project-specific version
+requirements before performing destructive cleanup.
 
 ## Safety boundaries
 
