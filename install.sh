@@ -102,7 +102,12 @@ Bootstrap:
   Mise              $MISE_VERSION
   ChezMoi           $CHEZMOI_VERSION
 
-Native packages (named Debian-family profiles only; 'any' skips):
+Native package policies:
+  Named Debian-family profiles: full package baseline below
+  any on Debian-family Linux:   build-essential, libatomic1
+  any on other Linux:           externally managed
+
+Named-profile package baseline:
 $(printf '%s\n' "$native_packages" | sed '/^[[:space:]]*$/d;s/^/  - /')
 
 Portable tools:
@@ -208,12 +213,36 @@ case "$profile" in
         ;;
 esac
 
-# Generic Linux hosts retain ownership of their OS packages.
+# Generic Linux hosts install only required toolchain prerequisites.
 # Named hosts continue using the existing Debian-family baseline.
 case "$profile" in
-    any)
-        printf '==> Skipping native packages (generic Linux profile)\n'
-        ;;
+any)
+    # Manage only prerequisites required by the shared Mise toolchain.
+    # Do not install the full infrastructure package baseline.
+    case "${ID:-}" in
+        debian|ubuntu|raspbian)
+            command -v sudo >/dev/null 2>&1 ||
+                die "sudo is required to install toolchain prerequisites"
+
+            command -v apt-get >/dev/null 2>&1 ||
+                die "apt-get is unavailable on this Debian-family host"
+
+            printf '==> Installing generic Linux toolchain prerequisites\n'
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends \
+                build-essential \
+                libatomic1
+            ;;
+        *)
+            command -v cc >/dev/null 2>&1 ||
+                die "C compiler missing; install your distribution's build toolchain"
+
+            printf '==> Generic Linux: native prerequisites externally managed\n'
+            printf '    Ensure libatomic.so.1 is available before installing Node.js.\n'
+            ;;
+    esac
+    ;;
+
     *)
         case "${ID:-}" in
             debian|ubuntu|raspbian)

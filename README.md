@@ -150,9 +150,11 @@ registration or host-specific configuration is required.
 - Required compilation tools for source-built applications
 - Network access for initial tool installation
 
-The generic bootstrap does not install native packages or
-configure system services. Install any missing distribution-specific
-prerequisites using the host's package manager.
+The generic bootstrap installs only the native prerequisites required by the shared mise toolchain. On Debian-family distributions, these are currently `build-essential` and `libatomic1`, installed through APT before ChezMoi configuration is applied.
+
+On other Linux distributions, native dependencies remain externally managed. Install a compatible C build toolchain and the `libatomic.so.1` runtime library using the distribution's package manager.
+
+The generic profile does not install the full NovaLabs infrastructure package baseline or manage system services. Automatic dependency provisioning is currently validated only on Ubuntu 24.04 AMD64.
 
 Docker, LazyDocker, Chronytop, and SSH server configuration are
 not managed by the `any` profile.
