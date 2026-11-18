@@ -8,6 +8,12 @@
 sourceDir = {{ .chezmoi.sourceDir | quote }}
 umask = 0o022
 
+# Disable terminal pagers to prevent interactive prompt conflicts.
+pager = ""
+
+[diff]
+pager = ""
+
 [data]
 profile = {{ $profile | quote }}
 withDocker = {{ $withDocker }}
