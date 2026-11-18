@@ -31,6 +31,7 @@ Debian = ""
 FreeBSD = ""
 Linux = ""
 Raspbian = ""
+# edited manually to use docker logo for docker host only
 Ubuntu = ""
 Unknown = ""
 
