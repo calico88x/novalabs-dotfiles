@@ -603,6 +603,31 @@ Native packages are converged with `apt-get`.
 
 This layer is for OS-level prerequisites and tools that should remain distribution-managed. Portable CLI tools should normally use Mise instead.
 
+## Proxmox — Chronytop
+
+[Chronytop](https://github.com/geerlingguy/chronytop) is a terminal-based Chrony monitoring application, installed exclusively on the Proxmox time server.
+
+- **Host policy:** `chronytop = "managed"`
+- **Version policy:** Latest published GitHub release
+- **Installation:** `/usr/local/bin/chronytop`
+- **Ownership:** `root:root`, permissions `0755`
+- **Verification:** SHA-256 checksum from the same upstream release
+- **Prerequisite:** Existing, system-managed Chrony installation
+
+Run with:
+
+```bash
+sudo chronytop
+```
+
+During normal reconciliation, `install.sh` checks the latest upstream release and installs Chronytop only when the existing binary or its ownership and permissions do not match the desired state.
+
+Chrony's daemon, service, and time synchronization configuration remain externally managed.
+
+Unlike the pinned Mise toolchain, Chronytop intentionally tracks upstream releases. Review upstream changes before reconciling Proxmox when strict version stability is required.
+
+On Proxmox, ./install.sh --apply may automatically install a newer Chronytop release. The bootstrap preview does not currently report available Chronytop updates.
+
 ## Docker policy
 
 NovaLabs does not own the Docker engine on the current Docker-capable hosts.

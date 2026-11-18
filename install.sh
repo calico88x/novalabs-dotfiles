@@ -167,7 +167,7 @@ chezmoi -S "$repo_root" init
 
 # Render and execute the validator before any sudo/system mutation.
 validator=$(mktemp)
-trap 'rm -f "$validator"' EXIT HUP INT TERM
+trap 'rm -f "$validator" "${chronytop_tmp:-}"' EXIT HUP INT TERM
 
 chezmoi -S "$repo_root" execute-template \
     < "$repo_root/.chezmoiscripts/run_before_10-validate-host.sh.tmpl" \
@@ -182,6 +182,11 @@ profile="$(
 
 with_docker="$(
     printf '{{ .withDocker }}' |
+        chezmoi -S "$repo_root" execute-template
+)"
+
+chronytop_policy="$(
+    printf '{{ with (index (index .hosts .profile) "chronytop") }}{{ . }}{{ else }}skip{{ end }}' |
         chezmoi -S "$repo_root" execute-template
 )"
 
@@ -227,6 +232,78 @@ chezmoi apply
 
 printf '==> Installing pinned Mise toolchain\n'
 "$mise_bin" install
+
+# Chronytop is managed only on the Proxmox time server.
+case "$chronytop_policy" in
+    managed)
+        [ "$profile" = "proxmox" ] ||
+            die "chronytop is only supported on Proxmox"
+
+        [ -x /usr/bin/chronyc ] ||
+            die "chronytop requires the existing Chrony installation"
+
+        chronytop_bin="/usr/local/bin/chronytop"
+        chronytop_url="https://github.com/geerlingguy/chronytop/releases/latest/download"
+
+        printf '==> Checking latest Chronytop release\n'
+
+        checksums="$(curl -fsSL "$chronytop_url/SHA256SUMS")" ||
+            die "failed to retrieve Chronytop checksums"
+
+        expected_sha="$(
+            printf '%s\n' "$checksums" |
+                awk '$2 == "chronytop-linux-amd64" {print $1}'
+        )"
+
+        printf '%s\n' "$expected_sha" |
+            grep -Eq '^[0-9a-fA-F]{64}$' ||
+            die "invalid Chronytop release checksum"
+
+        if [ -f "$chronytop_bin" ] &&
+           [ ! -L "$chronytop_bin" ] &&
+           printf '%s  %s\n' "$expected_sha" "$chronytop_bin" |
+               sha256sum --check --status &&
+           [ "$(stat -c '%U:%G %a' "$chronytop_bin")" = "root:root 755" ]
+        then
+            printf '==> Chronytop already current\n'
+        else
+            printf '==> Installing latest Chronytop release\n'
+
+            chronytop_tmp="$(mktemp)"
+
+            curl -fsSL \
+                -o "$chronytop_tmp" \
+                "$chronytop_url/chronytop-linux-amd64" ||
+                die "Chronytop download failed"
+
+            printf '%s  %s\n' "$expected_sha" "$chronytop_tmp" |
+                sha256sum --check --status ||
+                die "Chronytop checksum verification failed"
+
+            chronytop_stage="/usr/local/bin/.chronytop.$$"
+
+            if ! sudo install -o root -g root -m 0755 \
+                "$chronytop_tmp" "$chronytop_stage"
+            then
+                sudo rm -f -- "$chronytop_stage"
+                die "Chronytop staging failed"
+            fi
+
+            if ! sudo mv -f -- "$chronytop_stage" "$chronytop_bin"
+            then
+                sudo rm -f -- "$chronytop_stage"
+                die "Chronytop installation failed"
+            fi
+        fi
+
+        "$chronytop_bin" -version
+        ;;
+    skip)
+        ;;
+    *)
+        die "unsupported chronytop policy: $chronytop_policy"
+        ;;
+esac
 
 printf '==> Auditing unused Mise tool versions\n'
 "$mise_bin" ls --prunable

@@ -12,6 +12,7 @@ mutation = "managed"
 container_runtime = "none"
 docker = "skip"
 lazydocker = "skip"
+chronytop = "managed"
 ssh = "systemd-managed"
 
 [hosts.docker]
