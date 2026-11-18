@@ -1,5 +1,20 @@
 schema_version = 1
 
+[hosts.any]
+display_name = "Generic Linux"
+hostnames = []
+markers = []
+kernel = "linux"
+os_family = "any"
+expected_ids = []
+expected_architectures = ["amd64", "arm64"]
+mutation = "managed"
+container_runtime = "none"
+docker = "skip"
+lazydocker = "skip"
+chronytop = "skip"
+ssh = "skip"
+
 [hosts.proxmox]
 display_name = "Proxmox"
 hostnames = ["nova"]

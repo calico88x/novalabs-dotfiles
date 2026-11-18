@@ -25,6 +25,15 @@ Raspbian = ""
 Ubuntu = ""
 Unknown = ""
 
+[theme.hosts.any]
+display_name = "Generic Linux"
+family = "Dracula Classic"
+hue_degrees = 265
+shade_1 = "#BD93F9"
+shade_2 = "#44475A"
+shade_3 = "#8BE9FD"
+shade_4 = "#FF79C6"
+
 [theme.hosts.proxmox]
 display_name = "Proxmox"
 family = "Ember orange"

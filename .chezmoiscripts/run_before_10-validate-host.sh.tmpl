@@ -70,6 +70,7 @@ else
   fi
 fi
 
+{{- if or $host.hostnames $host.markers }}
 identity_ok=0
 
 case "$actual_hostname" in
@@ -89,14 +90,17 @@ fi
 if [ "$identity_ok" -ne 1 ]; then
   die "profile '$profile' does not match hostname '$actual_hostname' or its required host markers"
 fi
+{{- end }}
 
 if [ "$actual_kernel" != {{ $host.kernel | quote }} ]; then
   die "profile '$profile' requires kernel {{ $host.kernel }}, detected $actual_kernel"
 fi
 
+{{- if $host.expected_ids }}
 if ! in_list "$actual_os" {{ range $host.expected_ids }}{{ . | quote }} {{ end }}; then
   die "profile '$profile' does not support OS ID '$actual_os'"
 fi
+{{- end }}
 
 if ! in_list "$actual_arch" {{ range $host.expected_architectures }}{{ . | quote }} {{ end }}; then
   die "profile '$profile' does not support architecture '$actual_arch'"

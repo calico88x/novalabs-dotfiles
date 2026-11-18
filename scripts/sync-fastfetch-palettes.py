@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 HOSTS = (
+    "any",
     "proxmox",
     "docker",
     "pihole",
@@ -80,7 +81,18 @@ def main():
         )
         palette_name = starship["palette"]
         base = starship["palettes"][palette_name]["shade_1"]
-        palette = build_palette(base)
+        if host == "any":
+            # Use exact Dracula colours from the Starship palette.
+            shades = starship["palettes"][palette_name]
+            palette = {
+                str(slot): sgr(tuple(
+                    int(shades[f"shade_{slot}"][i:i + 2], 16)
+                    for i in (1, 3, 5)
+                ))
+                for slot in range(1, 5)
+            }
+        else:
+            palette = build_palette(base)
 
         current = fastfetch_path.read_text(encoding="utf-8")
         config = json.loads(current)

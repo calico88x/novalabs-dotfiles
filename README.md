@@ -114,6 +114,7 @@ flowchart TD
 
 | Profile | Host identity | Platform | Runtime policy | Status |
 |---|---|---|---|---|
+| `any` | Any hostname | Linux AMD64/ARM64 | Shared userland tools; no native package management | Ready for testing |
 | `proxmox` | `nova` | Debian AMD64 | no Docker | migrated |
 | `docker` | `docker` | Debian/Ubuntu AMD64 | Docker external; LazyDocker managed | migrated |
 | `pihole` | `pihole`, `pihole2` | Debian/Raspbian AMD64 | no Docker | migrated |
@@ -122,6 +123,45 @@ flowchart TD
 | `worker1` | `k8s-worker-01` | Debian AMD64 | containerd | migrated |
 | `zgx` | `zgx`, `zgx-40e6` | Ubuntu ARM64 | NVIDIA-managed Docker; GPU btop preserved | migrated |
 | `opnsense` | `opnsense`, `opnsense2` | FreeBSD AMD64 | stage-only | pending FreeBSD validation |
+
+### Generic Linux profile (`any`)
+
+The `any` profile provides the NovaLabs terminal environment on
+Linux hosts that do not have a dedicated host profile.
+
+Select `any` during first-time ChezMoi enrollment. No hostname
+registration or host-specific configuration is required.
+
+**Included:**
+
+- Dracula Classic theme for Starship, Fastfetch, and btop
+- Shared Bash configuration, aliases, and helper functions
+- Neovim/LazyVim configuration
+- Common pinned mise applications, including Starship,
+  Fastfetch, btop, Git utilities, Node.js, and Rust
+- Shared user-level configuration managed by ChezMoi
+
+**Platform requirements:**
+
+- Linux AMD64 or ARM64
+- Bash, Git, and curl or wget
+- `/etc/os-release`
+- A compatible mise runtime and system libraries
+- Required compilation tools for source-built applications
+- Network access for initial tool installation
+
+The generic bootstrap does not install native packages or
+configure system services. Install any missing distribution-specific
+prerequisites using the host's package manager.
+
+Docker, LazyDocker, Chronytop, and SSH server configuration are
+not managed by the `any` profile.
+
+The profile is designed for portable Linux user environments.
+Compatibility across distributions has not yet been fully verified.
+
+After enrollment, the generic profile remains selected until
+ChezMoi's enrollment configuration is explicitly changed.
 
 ## Repository layout
 
@@ -201,6 +241,12 @@ The active profile is available as:
 ```bash
 echo "$NOVALAB_HOST_PROFILE"
 ```
+
+For an unregistered Linux machine, choose `any`. This applies the
+shared NovaLabs configuration without requiring a dedicated host
+definition. Unlike named Debian-family profiles, `any` skips APT
+package convergence and leaves native dependency management to the
+host operating system.
 
 ### High-scrutiny enrollment
 

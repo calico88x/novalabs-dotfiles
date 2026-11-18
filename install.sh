@@ -74,14 +74,6 @@ esac
 # shellcheck disable=SC1091
 . /etc/os-release
 
-case "${ID:-}" in
-    debian|ubuntu|raspbian)
-        ;;
-    *)
-        die "unsupported Linux distribution: ${ID:-unknown}"
-        ;;
-esac
-
 native_packages="
 build-essential
 ca-certificates
@@ -110,7 +102,7 @@ Bootstrap:
   Mise              $MISE_VERSION
   ChezMoi           $CHEZMOI_VERSION
 
-Native packages:
+Native packages (named Debian-family profiles only; 'any' skips):
 $(printf '%s\n' "$native_packages" | sed '/^[[:space:]]*$/d;s/^/  - /')
 
 Portable tools:
@@ -216,16 +208,33 @@ case "$profile" in
         ;;
 esac
 
-command -v sudo >/dev/null 2>&1 ||
-    die "sudo is required for native package convergence"
+# Generic Linux hosts retain ownership of their OS packages.
+# Named hosts continue using the existing Debian-family baseline.
+case "$profile" in
+    any)
+        printf '==> Skipping native packages (generic Linux profile)\n'
+        ;;
+    *)
+        case "${ID:-}" in
+            debian|ubuntu|raspbian)
+                ;;
+            *)
+                die "unsupported Linux distribution for profile '$profile': ${ID:-unknown}"
+                ;;
+        esac
 
-command -v apt-get >/dev/null 2>&1 ||
-    die "apt-get is required for Debian-family native package convergence"
+        command -v sudo >/dev/null 2>&1 ||
+            die "sudo is required for native package convergence"
 
-printf '==> Installing native packages\n'
-sudo apt-get update
-# shellcheck disable=SC2086
-sudo apt-get install -y $native_packages
+        command -v apt-get >/dev/null 2>&1 ||
+            die "apt-get is required for Debian-family native package convergence"
+
+        printf '==> Installing native packages\n'
+        sudo apt-get update
+        # shellcheck disable=SC2086
+        sudo apt-get install -y $native_packages
+        ;;
+esac
 
 printf '==> Applying ChezMoi configuration\n'
 chezmoi apply

@@ -1,4 +1,4 @@
-{{- $profiles := list "proxmox" "docker" "pihole" "ubuntulab" "lovelace" "worker1" "zgx" "opnsense" -}}
+{{- $profiles := list "any" "proxmox" "docker" "pihole" "ubuntulab" "lovelace" "worker1" "zgx" "opnsense" -}}
 {{- $profile := promptChoiceOnce . "profile" "NovaLabs host profile" $profiles -}}
 {{- $withDocker := false -}}
 {{- if eq $profile "ubuntulab" -}}
