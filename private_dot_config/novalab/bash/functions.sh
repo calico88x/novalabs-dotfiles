@@ -22,3 +22,26 @@ reload_shell() {
     return 1
   fi
 }
+
+# Edit privileged files using the current Mise-managed Neovim.
+sedit() {
+  local editor
+
+  editor="$(mise which nvim)" || return 1
+  SUDO_EDITOR="$editor" sudoedit -- "$@"
+}
+
+# Execute a Mise-managed binary with elevated privileges.
+sudomise() {
+  if (( $# < 1 )); then
+    printf 'Usage: sudomise COMMAND [ARGS...]\n' >&2
+    return 2
+  fi
+
+  local executable
+
+  executable="$(mise which "$1")" || return 1
+  shift
+
+  sudo -- "$executable" "$@"
+}
