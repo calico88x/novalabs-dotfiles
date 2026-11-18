@@ -54,12 +54,13 @@ and reports unused Mise installations without deleting them.
   [Mise garbage collection](#mise-garbage-collection).
 - **ChezMoi scripts:** `chezmoi diff` may display eligible run scripts
   even when managed files have converged. Review these separately.
+- **ChezMoi pager:** External pagers are disabled in `.chezmoi.toml.tmpl` to avoid conflicts with interactive overwrite prompts. ChezMoi retains its normal modified-file protection.
+- **Locally modified files:** Review unexpected differences before applying. Do not use a global `--force` to bypass conflicts.
 
 ---
 
 **New host?** See [Bootstrap a new Linux host](#bootstrap-a-new-linux-host)
 for first-time enrollment.
-
 
 ## Architecture
 
@@ -479,6 +480,35 @@ The managed LazyVim tree includes:
 - `lua/plugins/`
 
 The committed `lazy-lock.json` preserves plugin revisions across hosts.
+
+#### LazyVim plugin lockfile policy
+
+`lazy-lock.json` is version-controlled and managed by ChezMoi.
+
+The repository is the authoritative source for plugin revisions across NovaLabs hosts.
+
+**Updating plugins**
+
+1. Select an authoring machine for the update.
+2. Run `:Lazy update` in Neovim.
+3. Validate Neovim startup and plugin functionality.
+4. Copy the updated `~/.config/nvim/lazy-lock.json` into `private_dot_config/nvim/lazy-lock.json` in the repository.
+5. Review the Git diff, commit the lockfile change, and push it.
+6. Deploy the updated repository to other hosts using the normal ChezMoi workflow.
+7. Run `:Lazy restore` in Neovim on each host to synchronize installed plugins with the committed lockfile.
+
+**Handling local differences**
+
+Neovim may modify its local lockfile when plugins are updated.
+
+When ChezMoi detects a modified `lazy-lock.json`:
+
+- Review the difference before overwriting.
+- If the update was intentional, validate and promote it into the repository.
+- Otherwise, restore the repository-managed lockfile through ChezMoi and run `:Lazy restore`.
+- Never automatically overwrite all ChezMoi-managed files to resolve a lockfile conflict.
+
+Plugin updates should be deliberate, reviewed changes rather than independent upgrades across hosts.
 
 On first launch, Neovim bootstraps `lazy.nvim` and installs the LazyVim/plugin set defined by the managed configuration.
 
