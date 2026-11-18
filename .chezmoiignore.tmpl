@@ -3,6 +3,11 @@ README.md
 docs/
 docs/**
 install.sh
+# Repository-only assets and development utilities.
+extra/
+extra/**
+scripts/
+scripts/**
 
 # LazyDocker is managed only on Docker-role hosts.
 {{- if not (or (eq .profile "docker") (eq .profile "zgx") (and (eq .profile "ubuntulab") .withDocker)) }}
