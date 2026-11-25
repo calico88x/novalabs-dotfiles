@@ -106,7 +106,7 @@ style = "fg:text_dark bg:shade_4"
 format = "[  $time ]($style)"
 
 [custom.user_marker]
-command = "printf '$ ✿✿ ' && whoami && printf ' ✿✿'"
+command = "printf '✿ ' && whoami"
 when = 'test "$(id -u)" -ne 0'
 shell = ["sh"]
 style = "bold shade_4"
@@ -122,8 +122,8 @@ format = "[$output]($style) "
 description = "Root shell marker"
 
 [character]
-success_symbol = "[ (✿◠‿◠) ❯](bold success) "
-error_symbol = "[ (ㆆ_ㆆ) ❯](bold error) "
+success_symbol = "[❯](bold success) "
+error_symbol = "[❯](bold error) "
 vimcmd_symbol = "[❮](bold success) "
 vimcmd_replace_one_symbol = "[❮](bold error) "
 vimcmd_replace_symbol = "[❮](bold error) "
