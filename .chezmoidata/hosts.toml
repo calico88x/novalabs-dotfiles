@@ -10,8 +10,8 @@ expected_ids = []
 expected_architectures = ["amd64", "arm64"]
 mutation = "managed"
 container_runtime = "none"
-docker = "skip"
-lazydocker = "skip"
+docker = "managed"
+lazydocker = "managed"
 chronytop = "skip"
 ssh = "skip"
 
