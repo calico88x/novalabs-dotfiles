@@ -106,7 +106,7 @@ style = "fg:text_dark bg:shade_4"
 format = "[  $time ]($style)"
 
 [custom.user_marker]
-command = "printf '$ ✿✿ ' && whoami && print ' ✿✿'"
+command = "printf '$ ✿✿ ' && whoami && printf ' ✿✿'"
 when = 'test "$(id -u)" -ne 0'
 shell = ["sh"]
 style = "bold shade_4"
