@@ -22,6 +22,6 @@ rust = "1.99.1"
 "aqua:aristocratos/btop" = "1.4.7"
 {{- end }}
 
-{{- if or (eq .profile "docker") (eq .profile "zgx") (and (eq .profile "ubuntulab") .withDocker) }}
+{{- if or (eq .profile "any") (eq .profile "docker") (eq .profile "zgx") (and (eq .profile "ubuntulab") .withDocker) }}
 "aqua:jesseduffield/lazydocker" = "0.25.2"
 {{- end }}
