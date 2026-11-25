@@ -16,9 +16,9 @@ shade_3 = "#767676"
 shade_4 = "#6dd24b"
 text_light = "#F7F7FB"
 text_dark = "#161923"
-success = "#A6E3A1"
-error = "#F38BA8"
-root = "#ff9c6b"
+success = "#50FA7B"
+error = "#FF5555"
+root = "#ff7f3f"
 
 [os]
 disabled = false
@@ -106,7 +106,7 @@ style = "fg:text_dark bg:shade_4"
 format = "[  $time ]($style)"
 
 [custom.user_marker]
-command = "printf '$'"
+command = "printf '$ ' && whoami"
 when = 'test "$(id -u)" -ne 0'
 shell = ["sh"]
 style = "bold shade_4"
@@ -114,7 +114,7 @@ format = "[$output]($style) "
 description = "Normal-user shell marker"
 
 [custom.root_marker]
-command = "printf '#'"
+command = "printf '# ' && whoami"
 when = 'test "$(id -u)" -eq 0'
 shell = ["sh"]
 style = "bold root"
