@@ -1,0 +1,50 @@
+{{- /*
+    NovaLabs application profile selector.
+
+    Input:
+      root: ChezMoi template context
+      app:  Application declaration from .apps
+
+    Output:
+      Literal string "true" or "false"
+
+    Explicit exclusions take precedence over inclusions.
+*/ -}}
+
+{{- $root := .root -}}
+{{- $app := .app -}}
+{{- $profile := $root.profile -}}
+{{- $host := index $root.hosts $profile -}}
+{{- $enabled := false -}}
+
+{{- if and (eq $host.kernel "linux") (eq $host.mutation "managed") -}}
+
+    {{- $excluded := false -}}
+
+    {{- if hasKey $app "exclude_profiles" -}}
+        {{- $excluded = has $profile $app.exclude_profiles -}}
+    {{- end -}}
+
+    {{- if not $excluded -}}
+
+        {{- if or (has "all-linux" $app.profiles) (has $profile $app.profiles) -}}
+            {{- $enabled = true -}}
+
+        {{- else if hasKey $app "optional_profiles" -}}
+
+            {{- if hasKey $app.optional_profiles $profile -}}
+                {{- $flag := index $app.optional_profiles $profile -}}
+
+                {{- if hasKey $root $flag -}}
+                    {{- $enabled = eq (index $root $flag) true -}}
+                {{- end -}}
+
+            {{- end -}}
+
+        {{- end -}}
+
+    {{- end -}}
+
+{{- end -}}
+
+{{- $enabled -}}
