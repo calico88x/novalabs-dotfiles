@@ -64,40 +64,57 @@ for first-time enrollment.
 
 ## Architecture
 
-NovaLabs Dotfiles separates ownership into three layers.
+NovaLabs Dotfiles separates responsibilities into four ownership categories.
 
 | Layer | Owner | Examples |
 |---|---|---|
 | User configuration | ChezMoi | Bash, Git include, Starship, Fastfetch, btop theme, LazyVim, tmux, Vim, LazyGit, LazyDocker |
+| Application declarations | Application catalog | Exact version pins, Mise backend identifiers, profile eligibility |
 | Portable userland tools | Mise | Neovim, Node, Rust, Tree-sitter CLI, ripgrep, fd, fzf, Starship, LazyGit, LazyDocker |
 | System/platform components | OS or vendor | OpenSSH, Docker engine, containerd, NVIDIA platform packages |
 
-Host policy is declared in `.chezmoidata/hosts.toml`.
+Declarative policy is separated into three catalogs:
+
+- `.chezmoidata/hosts.toml` — host identity and platform policy.
+- `.chezmoidata/apps.toml` — application versions and deployment scope.
+- `.chezmoidata/theme.toml` — host palettes and shared semantic colors.
+
+See the [Application Catalog documentation](docs/application-catalog.md)
+for the application schema, selection rules, and validation workflow.
 
 ## System map
 
 ```mermaid
 flowchart TD
   A["novalabs-dotfiles"] --> B["Host policy<br/>.chezmoidata/hosts.toml"]
-  A --> C["Themes and templates<br/>theme.toml + .chezmoitemplates"]
+  A --> C["Theme catalog<br/>.chezmoidata/theme.toml"]
+  A --> P["Application catalog<br/>.chezmoidata/apps.toml"]
   A --> D["Managed config sources<br/>private_dot_config"]
   A --> E["Bootstrap<br/>install.sh"]
+
+  B --> Q["Application selector<br/>.chezmoitemplates/apps/selection"]
+  P --> Q
+
+  Q --> R["Generated Mise configuration"]
+  Q --> S["Application configuration exclusions"]
+
+  C --> T["Host-aware themes"]
+  T --> D
 
   E --> F["Preview<br/>./install.sh"]
   E --> G["Apply<br/>./install.sh --apply"]
 
   G --> H["Validate host<br/>hostname • OS • arch • policy"]
-  H --> I["Install native packages<br/>apt-get baseline"]
+  H --> I["Install native prerequisites"]
   I --> J["Apply user config<br/>chezmoi"]
   J --> K["Install portable tools<br/>mise"]
   K --> L["Fresh shell<br/>exec bash -l"]
 
-  J --> M["Managed user config<br/>bash • git • starship • fastfetch • LazyVim • tmux • vim"]
-  K --> N["Portable CLI tools<br/>nvim • node • rust • tree-sitter • rg • fd • fzf • lazygit • lazydocker"]
+  R --> J
+  S --> J
+  D --> J
 
   H --> O["Externally owned components<br/>Docker engine • containerd • NVIDIA platform tools"]
-
-  B --> P["Host profiles<br/>proxmox • docker • pihole • ubuntulab<br/>lovelace • worker1 • zgx • opnsense"]
 ```
 
 ### Ownership vocabulary
@@ -157,8 +174,12 @@ On other Linux distributions, native dependencies remain externally managed. Ins
 
 The generic profile does not install the full NovaLabs infrastructure package baseline or manage system services. Automatic dependency provisioning is currently validated only on Ubuntu 24.04 AMD64.
 
-Docker, LazyDocker, Chronytop, and SSH server configuration are
-not managed by the `any` profile.
+LazyDocker is included in the `any` profile through the application
+catalog. Docker engine availability remains a separate runtime
+consideration.
+
+Chronytop and SSH server configuration are not managed by the
+`any` profile.
 
 The profile is designed for portable Linux user environments.
 Compatibility across distributions has not yet been fully verified.
@@ -172,15 +193,21 @@ ChezMoi's enrollment configuration is explicitly changed.
 .
 ├── .chezmoi.toml.tmpl
 ├── .chezmoidata/
+│   ├── apps.toml
 │   ├── hosts.toml
 │   └── theme.toml
 ├── .chezmoiignore.tmpl
 ├── .chezmoiscripts/
 ├── .chezmoitemplates/
+│   ├── apps/
+│   │   └── selection
 │   ├── fastfetch/
 │   └── starship/
 ├── docs/
+│   ├── application-catalog.md
 │   └── migration-ledger.md
+├── scripts/
+│   └── test-app-catalog.py
 ├── private_dot_config/
 │   ├── btop/
 │   ├── mise/
@@ -200,13 +227,16 @@ Important source paths:
 
 - `.chezmoidata/hosts.toml` — host identity, platform, mutation and runtime policy
 - `.chezmoidata/theme.toml` — host palette data
-- `private_dot_config/mise/config.toml.tmpl` — exact portable tool pins
+- `private_dot_config/mise/config.toml.tmpl` — generic Mise configuration renderer
 - `.chezmoiignore.tmpl` — profile-dependent configuration inclusion
 - `.chezmoitemplates/starship/` — per-profile Starship templates
 - `.chezmoitemplates/fastfetch/` — per-profile Fastfetch templates
 - `private_dot_config/btop/themes/novalab.theme.tmpl` — host-colored btop theme
 - `private_dot_config/nvim/` — LazyVim configuration and plugin lockfile
 - `install.sh` — preview-first bootstrap and native package convergence
+- `.chezmoidata/apps.toml` — portable application declarations and exact version pins
+- `.chezmoitemplates/apps/selection` — shared application eligibility selector
+- `scripts/test-app-catalog.py` — automated application catalog validation
 
 ## Bootstrap a new Linux host
 
@@ -330,66 +360,75 @@ Existing vendor/platform component?
     -> external; validate but do not take ownership
 
 Portable userland CLI?
-    -> Mise
+    -> Application catalog + Mise
 
 User configuration for that CLI?
     -> ChezMoi
 ```
 
-### 1. Add an exact Mise pin
+### 1. Declare the application
 
-Edit:
+Edit `.chezmoidata/apps.toml`.
 
-```text
-private_dot_config/mise/config.toml.tmpl
-```
-
-Add the tool under the existing `[tools]` table:
+Example:
 
 ```toml
-"aqua:vendor/tool" = "1.2.3"
+[apps.example]
+backend = "aqua:vendor/example"
+version = "1.2.3"
+profiles = ["all-linux"]
 ```
 
-All committed Mise versions are exact pins.
+All application versions must use exact pins.
 
-Do **not** commit floating selectors such as:
+For profile-specific applications, declare the eligible profiles:
+
+```toml
+[apps.example]
+backend = "aqua:vendor/example"
+version = "1.2.3"
+profiles = ["any", "docker"]
+```
+
+The application selector automatically excludes unsupported platforms and unmanaged hosts.
+
+See the [Application Catalog documentation](docs/application-catalog.md) for advanced installation options, exclusions, and optional enrollment conditions.
+
+### 2. Add configuration when required
+
+Place application configuration under `private_dot_config/` using ChezMoi naming conventions.
+
+For example:
 
 ```text
-latest
-1
-1.2
-stable
-release channels
+private_dot_config/example/config.toml
+    -> ~/.config/example/config.toml
 ```
 
-Version upgrades should be explicit Git diffs.
+If configuration should only be deployed on eligible hosts, use the shared application selector in `.chezmoiignore.tmpl`.
 
-### 2. Add profile conditions when required
+Do not duplicate application deployment conditions.
 
-Example:
+### 3. Validate the catalog
 
-```gotemplate
-{{- if eq .profile "somehost" }}
-"aqua:vendor/tool" = "1.2.3"
-{{- end }}
+Run the automated validation script from the repository root:
+
+```bash
+python scripts/test-app-catalog.py
 ```
 
-Use `.chezmoiignore.tmpl` when the tool's configuration should exist only on selected profiles.
+Review the resulting Git diff:
 
-LazyDocker is the current example: it is rendered only for Docker-role hosts.
-
-### 3. Add configuration if the tool has any
-
-Place the source under `private_dot_config/` using ChezMoi naming semantics.
-
-Example:
-
-```text
-private_dot_config/tool/config.toml
-    -> ~/.config/tool/config.toml
+```bash
+git diff --check
+git diff
 ```
+
+The validation script renders every declared host profile without installing applications or applying configuration.
 
 ### 4. Validate on a representative host
+
+Use the standard preview workflow:
 
 ```bash
 chezmoi cat ~/.config/mise/config.toml
@@ -397,18 +436,22 @@ chezmoi diff
 chezmoi apply --dry-run --verbose
 ```
 
-Then apply:
+After reviewing the desired changes:
 
 ```bash
 ./install.sh --apply
 ```
 
-Confirm the resolved binary and version:
+Confirm the installed executable and version:
 
 ```bash
-command -v tool
-tool --version
+command -v example
+example --version
 ```
+
+Validate both AMD64 and ARM64 compatibility when applicable before fleet deployment.
+
+Do not edit the generated Mise configuration directly.
 
 ## Modify configuration
 
@@ -606,11 +649,13 @@ If the host has a distinct theme:
 
 ### 4. Add tool/config exceptions
 
-If a host needs a different tool policy:
+If a host needs a different application policy:
 
-- update `private_dot_config/mise/config.toml.tmpl`
-- update `.chezmoiignore.tmpl` where necessary
-- record preservation requirements in `.chezmoidata/hosts.toml`
+- Update the relevant application declarations in `.chezmoidata/apps.toml`.
+- Update `.chezmoiignore.tmpl` where configuration exclusions are required.
+- Use the shared application selector instead of duplicating profile conditions.
+- Record platform ownership and preservation requirements in `.chezmoidata/hosts.toml`.
+- Run `python scripts/test-app-catalog.py`.
 
 ### 5. Add bootstrap validation when needed
 
@@ -640,11 +685,13 @@ For a new profile, use the high-scrutiny enrollment workflow before enabling nor
 
 Tool upgrades are deliberate repository changes.
 
-1. Change the exact pin in `private_dot_config/mise/config.toml.tmpl`.
-2. Review `git diff`.
-3. Test rendering and installation on one representative host.
-4. Verify the tool launches and its configuration remains compatible.
-5. Commit and roll out normally.
+1. Verify the upstream release and supported architectures.
+2. Change the exact version pin in `.chezmoidata/apps.toml`.
+3. Run `python scripts/test-app-catalog.py`.
+4. Review the Git diff.
+5. Test rendering and installation on a representative host.
+6. Verify the tool launches and its configuration remains compatible.
+7. Commit, push, and roll out normally.
 
 Bootstrap infrastructure is pinned separately in `install.sh`:
 

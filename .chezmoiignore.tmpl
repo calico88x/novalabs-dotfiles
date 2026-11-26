@@ -3,14 +3,21 @@ README.md
 docs/
 docs/**
 install.sh
+
 # Repository-only assets and development utilities.
 extra/
 extra/**
 scripts/
 scripts/**
 
-# Ignore LazyDocker configuration on unsupported profiles.
-{{- if not (or (eq .profile "any") (eq .profile "docker") (eq .profile "zgx") (and (eq .profile "ubuntulab") .withDocker)) }}
+# Application configuration exclusions.
+# Application eligibility is defined in .chezmoidata/apps.toml
+# and evaluated by the shared application selector.
+
+{{- $root := . }}
+
+# LazyDocker
+{{- if ne (includeTemplate "apps/selection" (dict "root" $root "app" .apps.lazydocker) | trim) "true" }}
 .config/lazydocker/
 .config/lazydocker/**
 {{- end }}
