@@ -1,3 +1,4 @@
+
 # Repository-only content.
 README.md
 docs/
@@ -32,20 +33,24 @@ scripts/**
     {{- end }}
 {{- end }}
 {{- if not $tuiKitEnabled }}
-.config/novalab/themes/tui-kit.toml
+.config/novalab/themes/
+.config/novalab/themes/**
 {{- end }}
 
 # K9s native skin.
 {{- if ne (includeTemplate "apps/selection" (dict "root" $root "app" .apps.k9s) | trim) "true" }}
-.config/k9s/skins/novalab.yaml
+.config/k9s/
+.config/k9s/**
 {{- end }}
 
 # LazyJournal initial configuration.
 {{- if ne (includeTemplate "apps/selection" (dict "root" $root "app" .apps.lazyjournal) | trim) "true" }}
-.config/lazyjournal/config.yml
+.config/lazyjournal/
+.config/lazyjournal/**
 {{- end }}
 
 # Network Doctor initial theme preference.
 {{- if ne (includeTemplate "apps/selection" (dict "root" $root "app" (index .apps "network-doctor")) | trim) "true" }}
-.config/netdoc/theme
+.config/netdoc/
+.config/netdoc/**
 {{- end }}

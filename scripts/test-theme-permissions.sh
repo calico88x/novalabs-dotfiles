@@ -29,15 +29,24 @@ PERSISTENT_STATE="$TEST_ROOT/state.boltdb"
 
 mkdir -p "$SOURCE" "$DESTINATION" "$CACHE"
 
-# Use the actual repository theme data and K9s source attributes.
-# Exclude unrelated applications, bootstrap scripts and migrations.
+# Use the actual repository data, application selector,
+# ignore rules and application theme source attributes.
+# Exclude unrelated bootstrap scripts and migrations.
 cp -R -- "$ROOT/.chezmoidata" "$SOURCE/.chezmoidata"
+cp -R -- "$ROOT/.chezmoitemplates" "$SOURCE/.chezmoitemplates"
+cp -- "$ROOT/.chezmoiignore.tmpl" "$SOURCE/.chezmoiignore.tmpl"
 
-mkdir -p "$SOURCE/private_dot_config"
+mkdir -p "$SOURCE/private_dot_config/novalab"
 
 cp -R -- \
   "$ROOT/private_dot_config/private_k9s" \
+  "$ROOT/private_dot_config/lazyjournal" \
+  "$ROOT/private_dot_config/netdoc" \
   "$SOURCE/private_dot_config/"
+
+cp -R -- \
+  "$ROOT/private_dot_config/novalab/themes" \
+  "$SOURCE/private_dot_config/novalab/"
 
 # Isolate ChezMoi configuration and persistent state from the host.
 cat > "$CONFIG" <<'EOF'
@@ -158,5 +167,96 @@ check_convergence
   fail "Skin content changed during repeated reconciliation"
 
 printf 'PASS: Permission drift correction and idempotency\n'
+
+# Switch the isolated enrollment profile.
+set_profile() {
+  local profile="$1"
+
+  cat > "$CONFIG" <<EOF
+[data]
+    profile = "$profile"
+    withDocker = false
+EOF
+}
+
+check_absent() {
+  local path="$1"
+
+  [[ ! -e "$path" && ! -L "$path" ]] ||
+    fail "Unexpected destination: $path"
+}
+
+reset_destination() {
+  rm -rf -- "$DESTINATION"
+  mkdir -p "$DESTINATION"
+}
+
+# Scenario 4: Fresh installation on a K9s-ineligible host.
+set_profile zgx
+reset_destination
+
+run_chezmoi apply --force
+
+check_absent "$K9S"
+
+[[ -s "$DESTINATION/.config/lazyjournal/config.yml" ]] ||
+  fail "Missing eligible LazyJournal configuration"
+
+[[ -s "$DESTINATION/.config/netdoc/theme" ]] ||
+  fail "Missing eligible Network Doctor theme"
+
+[[ -s "$DESTINATION/.config/novalab/themes/tui-kit.toml" ]] ||
+  fail "Missing eligible shared tui-kit theme"
+
+check_convergence
+
+printf 'PASS: Ineligible K9s subtree excluded on ZGX\n'
+
+# Scenario 5: Preserve existing unmanaged K9s configuration.
+mkdir -p "$SKINS"
+
+chmod 755 "$K9S" "$SKINS"
+
+printf 'k9s:\n  readOnly: true\n' > "$K9S/config.yaml"
+printf 'aliases:\n  po: pods\n' > "$K9S/aliases.yaml"
+printf '# Existing unmanaged skin\n' > "$SKIN"
+
+chmod 600 "$K9S/config.yaml" "$K9S/aliases.yaml"
+chmod 644 "$SKIN"
+
+CONFIG_HASH="$(sha256sum "$K9S/config.yaml")"
+ALIASES_HASH="$(sha256sum "$K9S/aliases.yaml")"
+SKIN_HASH="$(sha256sum "$SKIN")"
+
+run_chezmoi apply --force
+
+check_mode "$K9S" 755
+check_mode "$SKINS" 755
+check_mode "$SKIN" 644
+check_user_state
+
+[[ "$(sha256sum "$SKIN")" == "$SKIN_HASH" ]] ||
+  fail "Existing unmanaged K9s skin was modified"
+
+check_convergence
+
+printf 'PASS: Ineligible existing K9s subtree preserved\n'
+
+# Scenario 6: No application-specific theme directories
+# on a profile that excludes Linux application management.
+set_profile opnsense
+reset_destination
+
+run_chezmoi apply --force
+
+check_absent "$K9S"
+check_absent "$DESTINATION/.config/lazyjournal"
+check_absent "$DESTINATION/.config/netdoc"
+check_absent "$DESTINATION/.config/novalab/themes"
+
+check_convergence
+
+printf 'PASS: Application theme subtrees excluded on OPNsense\n'
+
 printf '%s\n' '============================================================'
-printf 'PASS: 3 filesystem scenarios validated\n'
+printf 'PASS: 6 filesystem scenarios validated\n'

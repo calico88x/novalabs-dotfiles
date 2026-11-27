@@ -195,6 +195,20 @@ When an application's configuration should only exist on eligible hosts, `.chezm
 
 Application-specific exclusion paths remain in `.chezmoiignore.tmpl`.
 
+When an application is ineligible, both its configuration directory
+and descendants must be excluded from ChezMoi management.
+
+File-level exclusions alone can leave parent directories under
+management, resulting in unnecessary directory creation or permission
+reconciliation.
+
+Use the narrowest application-specific subtree. Exclusions must not
+affect unrelated managed configuration.
+
+Excluding a subtree does not delete existing configuration, uninstall
+applications, or revoke user access. Existing excluded directories,
+files, and permissions remain unmanaged.
+
 ## Infrastructure TUI themes
 
 Infrastructure TUI appearance is derived from the centralized theme catalog:
@@ -252,9 +266,28 @@ Configuration eligibility is evaluated using the shared application selector in 
 
 The shared tui-kit palette is deployed when at least one compatible application is eligible.
 
-K9s, LazyJournal, and Network Doctor configuration files are deployed only when their respective applications are eligible.
+K9s, LazyJournal, and Network Doctor configuration subtrees are
+managed only when their respective applications are eligible.
 
-OPNsense is excluded from infrastructure TUI theme deployment.
+| Configuration subtree | Eligibility condition |
+|---|---|
+| `~/.config/k9s/` | K9s is eligible |
+| `~/.config/lazyjournal/` | LazyJournal is eligible |
+| `~/.config/netdoc/` | Network Doctor is eligible |
+| `~/.config/novalab/themes/` | At least one compatible tui-kit application is eligible |
+
+For each ineligible subtree, `.chezmoiignore.tmpl` renders both the
+directory exclusion and its recursive descendant exclusion.
+
+OPNsense is excluded from all four infrastructure TUI configuration
+subtrees.
+
+The initial ZGX ARM64 canary dry-run identified that file-level
+exclusions prevented K9s skin deployment but still permitted creation
+of empty K9s directories. Subtree exclusions and native filesystem
+regression tests were introduced to correct this behavior.
+
+Existing excluded configurations are preserved rather than removed.
 
 ### Configuration ownership
 
@@ -311,8 +344,12 @@ plugins, and runtime state remain user-owned.
 
 #### Directory permission policy
 
-ChezMoi's `private_` directory attributes enforce restrictive permissions
-on the K9s configuration hierarchy.
+On K9s-eligible hosts, ChezMoi's `private_` directory attributes enforce
+restrictive permissions on the K9s configuration hierarchy.
+
+On K9s-ineligible hosts, the entire configuration subtree is excluded
+from management. Existing directory permissions and user-owned files
+are not reconciled.
 
 | Deployment target | Permissions | Policy |
 |---|---|---|
@@ -527,6 +564,8 @@ The test validates:
 - Theme configuration eligibility.
 - Agreement between application enrollment and configuration deployment.
 - Independent configuration eligibility expectations.
+- Application-specific directory and recursive descendant exclusions.
+- Detection of obsolete file-level exclusion rules.
 - Deterministic theme rendering.
 - Generated configuration formatting.
 - Native TOML and YAML parsing.
@@ -549,7 +588,8 @@ From a Linux shell or WSL, run:
 bash scripts/test-theme-env.sh
 ```
 
-The test uses temporary configuration directories and isolated shell environments to validate eight activation scenarios:
+The test uses temporary configuration directories and isolated shell
+environments to validate eight activation scenarios:
 
 | Scenario | Expected behavior |
 |---|---|
@@ -562,7 +602,8 @@ The test uses temporary configuration directories and isolated shell environment
 | Custom XDG configuration path | Resolve themes from the supplied path |
 | Repeated initialization | Stable environment without duplicate PATH changes |
 
-The test also checks Bash syntax and removes its temporary test directory on exit.
+The test also checks Bash syntax and removes its temporary test
+directory on exit.
 
 ### Linux filesystem permission validation
 
@@ -572,17 +613,25 @@ From a Linux shell or WSL with ChezMoi available on PATH, run:
 bash scripts/test-theme-permissions.sh
 ```
 
-The test performs actual ChezMoi reconciliation against a temporary
-Linux destination using the repository's K9s template and theme data.
+The test performs actual ChezMoi reconciliation against temporary
+Linux destinations using the repository's application selector,
+ignore rules, theme data, and infrastructure TUI configuration
+templates.
+
+This validates native ChezMoi exclusion behavior rather than
+reimplementing its ignore pattern semantics in the test suite.
 
 The isolated source contains no bootstrap scripts, application
 installation scripts, or unrelated host configuration.
 
 | Scenario | Expected behavior |
 |---|---|
-| Fresh installation | Create private K9s directories and the managed skin |
-| Existing installation | Correct directory permissions and preserve existing user configuration |
+| Fresh eligible installation | Create private K9s directories and the managed skin |
+| Existing eligible installation | Correct directory permissions and preserve existing user configuration |
 | Permission drift and repeated reconciliation | Restore restrictive permissions, preserve content, and converge without further differences |
+| Fresh ZGX installation | Exclude the complete K9s subtree while deploying eligible infrastructure TUI configurations |
+| Existing ZGX configuration | Preserve unmanaged K9s directories, permissions, configuration, aliases, and skin |
+| OPNsense profile | Exclude all four infrastructure TUI configuration subtrees |
 
 The test validates:
 
@@ -593,21 +642,28 @@ The test validates:
 - Skin content stability during permission drift correction.
 - Empty ChezMoi diffs after successful reconciliation.
 - Repeated, unattended reconciliation.
+- Absence of ineligible configuration directories on fresh destinations.
+- Preservation of existing excluded directory permissions.
+- SHA-256 content integrity of excluded user-owned configuration files.
+- Continued deployment of eligible configuration on mixed-eligibility hosts.
+- Complete infrastructure TUI configuration subtree exclusion for OPNsense.
 
 ChezMoi configuration, source, destination, cache, and persistent
 state are isolated within a temporary test directory.
 
 The test uses `chezmoi apply --force` only against its isolated
 destination to avoid interactive prompts when correcting deliberately
-introduced configuration drift.
-
-This does not change the conflict protection policy used during
+introduced fixture differences. This does not change the policy for
 normal host reconciliation.
 
 Temporary test directories are removed automatically when the test exits.
 
-The filesystem regression suite was validated using the pinned
-ChezMoi v2.72.1 release on an AMD64 Linux filesystem.
+All six filesystem regression scenarios were validated using the
+pinned ChezMoi v2.72.1 release on an AMD64 Linux filesystem.
+
+The OPNsense scenario validates profile eligibility using an isolated
+Linux test runner. Native FreeBSD reconciliation is outside the scope
+of this validation.
 
 ### Configuration ownership validation
 
@@ -638,6 +694,111 @@ bash scripts/test-theme-env.sh
 bash scripts/test-theme-permissions.sh
 git diff --check
 ```
+
+## Live canary deployment validation
+
+Live canary deployments complement isolated cross-architecture binary
+testing and automated configuration regression testing.
+
+Each canary validates the standard bootstrap workflow, host-specific
+application enrollment, existing configuration preservation, native
+application behavior, and post-deployment configuration convergence.
+
+### AMD64 canary — OpsLab
+
+| Attribute | Result |
+|---|---|
+| Host | `ops-lab-01` |
+| Platform | Ubuntu / AMD64 |
+| Enrollment profile | `any` |
+| Optional Docker enrollment | `false` |
+| Validated release | `05ec568` |
+| Expected Mise applications | 27 |
+| Newly installed infrastructure applications | 10 |
+| Deployment status | Passed |
+
+Acceptance results:
+
+- Authoritative Forgejo and public GitHub mirror commit identifiers matched.
+- All 27 declared applications were installed at their requested versions.
+- All ten new infrastructure applications installed successfully.
+- Network Doctor artifact attestation verification succeeded.
+- Both managed theme environment variables activated correctly.
+- All five K9s filesystem permission checks passed.
+- Existing K9s configuration and aliases were byte-for-byte unchanged.
+- Native application runtime checks passed.
+- Mise-managed K9s took precedence over the existing dpkg installation.
+- The legacy K9s package was retired through APT after recovery package
+  reconstruction and verification.
+- No additional packages were removed during K9s retirement.
+- The final K9s executable resolved exclusively to the Mise installation.
+- `chezmoi verify --exclude=scripts` passed.
+- The source repository remained clean and synchronized.
+
+The initial OpsLab dry-run identified a directory permission regression
+that would have relaxed existing K9s configuration permissions.
+
+The correction introduced private source directory attributes and was
+integrated through PR #4 before live reconciliation.
+
+The original K9s configuration, previous Mise manifest, and reconstructed
+Debian package remain available in a private local recovery directory.
+The recovery package passed metadata, contents, and SHA-256 verification.
+
+The reconstructed package is a local recovery artifact rather than a
+verified reproduction of the original upstream installer.
+
+Validation limitations:
+
+- Actual recovery package restoration was not tested.
+- Full Docker-dependent application functionality was not validated.
+- `dpkg-repack` was installed as a local recovery utility and is not a
+  declared NovaLabs application dependency.
+
+### ARM64 canary — ZGX
+
+| Attribute | Result |
+|---|---|
+| Host | `zgx-40e6` |
+| Platform | Ubuntu / ARM64 |
+| Enrollment profile | `zgx` |
+| Optional Docker enrollment | `false` |
+| Initial preview release | `05ec568` |
+| Expected Mise applications | 25 |
+| New eligible infrastructure applications | 9 |
+| Deployment status | Pending |
+
+The initial live dry-run confirmed application eligibility, exact
+version pins, and host-specific theme rendering.
+
+It also identified unnecessary K9s directory creation on a host where
+K9s is ineligible. Live reconciliation was paused before any configuration
+changes were applied.
+
+The application subtree exclusion correction passed all six native
+filesystem regression scenarios before resuming the ARM64 canary.
+
+Final live deployment acceptance remains pending.
+
+### Regression baseline
+
+The application directory eligibility correction passed:
+
+| Validation suite | Passed |
+|---|---:|
+| Application enrollment scenarios | 10 |
+| Theme enrollment scenarios | 10 |
+| Generated theme configurations | 30 |
+| Shell environment scenarios | 8 |
+| Native filesystem scenarios | 6 |
+| Total reported validation checkpoints | 64 |
+
+These counts represent distinct scenario and configuration checks,
+not a code coverage percentage.
+
+The shared ChezMoi template directory also uses an explicit LF
+normalization policy, including extensionless templates. This policy
+was integrated independently through PR #5 (`26f96ec`).
 
 ## Application updates
 

@@ -314,7 +314,7 @@ Important source paths:
 - `private_dot_config/netdoc/` — initial Network Doctor theme preference
 - `scripts/test-theme-catalog.py` — automated theme catalog validation
 - `scripts/test-theme-env.sh` — shell theme activation regression tests
-- `scripts/test-theme-permissions.sh` — isolated Linux filesystem permission validation
+- `scripts/test-theme-permissions.sh` — isolated Linux filesystem permission and application subtree eligibility validation
 
 ## Bootstrap a new Linux host
 
@@ -483,7 +483,27 @@ private_dot_config/example/config.toml
     -> ~/.config/example/config.toml
 ```
 
-If configuration should only be deployed on eligible hosts, use the shared application selector in `.chezmoiignore.tmpl`.
+If configuration should only be deployed on eligible hosts, use the
+shared application selector in `.chezmoiignore.tmpl`.
+
+Exclude both the application-specific directory and its descendants
+when the application is ineligible. Excluding individual files alone
+can leave parent directories under ChezMoi management.
+
+For example, an ineligible application's configuration subtree should
+produce the following ignore patterns:
+
+```text
+.config/example/
+.config/example/**
+```
+
+Use the narrowest application-owned subtree. Do not exclude shared
+configuration directories that contain unrelated managed files.
+
+Existing excluded configuration directories and files remain unmanaged.
+Exclusion does not remove previously deployed files or uninstall
+applications.
 
 Do not duplicate application deployment conditions.
 
@@ -672,6 +692,15 @@ automatically overwritten when catalog defaults change.
 Theme deployment follows application eligibility through the shared
 application selector.
 
+Application-specific configuration subtrees are excluded from ChezMoi
+management when their corresponding applications are ineligible.
+
+The shared tui-kit themes directory is managed when at least one
+compatible application is eligible.
+
+Excluded subtrees are not created or reconciled. Existing unmanaged
+files, directory permissions, and user preferences are preserved.
+
 See [Infrastructure TUI themes](docs/application-catalog.md#infrastructure-tui-themes)
 for implementation details and configuration ownership rules.
 
@@ -717,9 +746,22 @@ or through WSL.
 The filesystem permission test additionally requires ChezMoi on PATH
 and standard Linux filesystem utilities.
 
-It validates fresh installation permissions, existing configuration
-preservation, permission drift correction, and repeated reconciliation
-against an isolated temporary destination.
+The filesystem regression suite uses the repository's actual application
+selector, ignore rules, theme data, and configuration templates.
+
+It validates six scenarios against isolated temporary destinations:
+
+1. Fresh K9s installation with restrictive directory permissions.
+2. Existing K9s installation with user configuration preservation.
+3. Permission drift correction and repeated reconciliation.
+4. Fresh ZGX enrollment without an ineligible K9s configuration subtree.
+5. Preservation of existing unmanaged K9s files and directory permissions
+   on a K9s-ineligible host.
+6. Infrastructure TUI configuration subtree exclusion for the OPNsense
+   profile.
+
+The OPNsense scenario validates configuration eligibility on a Linux
+test runner. It does not constitute native FreeBSD deployment testing.
 
 No live host configuration or Kubernetes credentials are modified
 by these regression tests.
@@ -982,6 +1024,15 @@ public push mirror.
 
 Repository changes should be developed on feature branches, reviewed,
 validated, and committed before integration into `main`.
+
+The repository enforces LF line endings for shared ChezMoi templates
+under `.chezmoitemplates/`, including extensionless templates such as
+the application eligibility selector.
+
+When using Windows and WSL against the same working tree, inspect
+unexpected line-ending differences before staging changes. Avoid
+repository-wide normalization or global Git configuration changes as
+a workaround for individual file discrepancies.
 
 On the authoring workstation, inspect the configured remotes:
 
