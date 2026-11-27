@@ -232,7 +232,7 @@ Not every terminal application supports the same customization capabilities. Nov
 | tui-traffic | Shared tui-kit RGB palette | Managed |
 | tui-cron | Shared tui-kit RGB palette | Managed |
 | tui-ssh | Shared tui-kit RGB palette | Managed |
-| K9s | Native host-specific RGB skin | Managed skin only |
+| K9s | Native host-specific RGB skin | Managed skin and directory permissions |
 | LazyJournal | Native ANSI color configuration | Create-only |
 | Network Doctor | Native `contrast` preset | Create-only |
 | Dive | Native appearance | Unmanaged |
@@ -244,7 +244,7 @@ All theme configuration is managed at the user level. Theme integration does not
 | Repository source | Deployment target |
 |---|---|
 | `private_dot_config/novalab/themes/tui-kit.toml.tmpl` | `~/.config/novalab/themes/tui-kit.toml` |
-| `private_dot_config/k9s/skins/novalab.yaml.tmpl` | `~/.config/k9s/skins/novalab.yaml` |
+| `private_dot_config/private_k9s/private_skins/novalab.yaml.tmpl` | `~/.config/k9s/skins/novalab.yaml` |
 | `private_dot_config/lazyjournal/create_config.yml.tmpl` | `~/.config/lazyjournal/config.yml` |
 | `private_dot_config/netdoc/create_theme.tmpl` | `~/.config/netdoc/theme` |
 
@@ -305,7 +305,34 @@ The shared palette is managed as one configuration file to keep compatible appli
 
 K9s uses a native skin generated from the selected host's palette.
 
-Only the NovaLabs skin is managed. General K9s configuration, context configuration, Kubernetes credentials, plugins, and runtime state remain user-owned.
+The NovaLabs skin and its parent directory permissions are managed.
+General K9s configuration, context configuration, Kubernetes credentials,
+plugins, and runtime state remain user-owned.
+
+#### Directory permission policy
+
+ChezMoi's `private_` directory attributes enforce restrictive permissions
+on the K9s configuration hierarchy.
+
+| Deployment target | Permissions | Policy |
+|---|---|---|
+| `~/.config/k9s/` | `0700` | Managed private directory |
+| `~/.config/k9s/skins/` | `0700` | Managed private directory |
+| `~/.config/k9s/skins/novalab.yaml` | `0644` | Managed skin |
+| Existing K9s configuration and aliases | Unchanged | User-owned |
+
+The private parent directories prevent other ordinary users from
+traversing the K9s configuration hierarchy.
+
+Existing unmanaged configuration files are not rewritten or removed
+during theme reconciliation.
+
+The initial OpsLab canary dry-run identified that non-private source
+directory attributes would relax existing K9s directory permissions
+from `0700` to `0755`. Private source attributes and Linux filesystem
+regression tests were introduced to prevent this behavior.
+
+#### Skin activation
 
 The skin is selected through `K9S_SKIN=novalab` unless a non-empty environment override already exists.
 
@@ -428,8 +455,19 @@ Fleet reconciliation and host-specific runtime validation remain separate deploy
   Mise-managed replacement has been installed and verified.
 - The existing Lovelace K9s executable resolves from `~/.local/bin/k9s`
   to `~/.local/opt/k9s-v0.51.0/bin/k9s`.
+- OpsLab retains an existing dpkg-managed K9s v0.51.0 installation
+  at `/usr/bin/k9s` until its Mise-managed replacement has been
+  installed and verified.
+- On OpsLab, `/bin/k9s` and `/usr/bin/k9s` resolve to the same
+  physical executable.
+- Package-managed K9s installations must be retired through their
+  package manager rather than by manually deleting executables.
 - K9s ownership migration must preserve existing configuration,
-  Kubernetes credentials, and a recoverable copy of the previous binary.
+  Kubernetes credentials, and a recoverable rollback path for the
+  previous installation.
+- Legacy executables are retained until the Mise-managed replacement,
+  shell PATH precedence, and native application behavior have been
+  verified.
 - Worker1 has no existing K9s installation detected and requires no
   ownership migration before initial installation.
 - Docker engine, containerd, NVIDIA platform components, and system services remain outside the portable application catalog.
@@ -441,8 +479,10 @@ Fleet reconciliation and host-specific runtime validation remain separate deploy
 - Python 3.11 or newer.
 - ChezMoi available on PATH.
 - PyYAML available in the Python development environment.
-- Bash for shell environment regression testing.
-- A Linux environment or WSL for running the shell regression suite.
+- Bash for shell environment and filesystem regression testing.
+- A Linux environment or WSL for running the shell regression suites.
+- Linux filesystem utilities, including `stat`, `chmod`, `mktemp`,
+  and `sha256sum`, for destination permission validation.
 
 PyYAML is a development and testing dependency only. It is not required for normal NovaLabs host reconciliation.
 
@@ -493,6 +533,8 @@ The test validates:
 - Shared tui-kit palette mappings.
 - K9s interface and semantic color assignments.
 - K9s host-specific cursor and resource color mappings.
+- K9s private source directory attributes.
+- Absence of the legacy non-private K9s source directory.
 - LazyJournal initial interface configuration.
 - Network Doctor preference file content.
 - OPNsense theme configuration exclusion.
@@ -522,6 +564,51 @@ The test uses temporary configuration directories and isolated shell environment
 
 The test also checks Bash syntax and removes its temporary test directory on exit.
 
+### Linux filesystem permission validation
+
+From a Linux shell or WSL with ChezMoi available on PATH, run:
+
+```bash
+bash scripts/test-theme-permissions.sh
+```
+
+The test performs actual ChezMoi reconciliation against a temporary
+Linux destination using the repository's K9s template and theme data.
+
+The isolated source contains no bootstrap scripts, application
+installation scripts, or unrelated host configuration.
+
+| Scenario | Expected behavior |
+|---|---|
+| Fresh installation | Create private K9s directories and the managed skin |
+| Existing installation | Correct directory permissions and preserve existing user configuration |
+| Permission drift and repeated reconciliation | Restore restrictive permissions, preserve content, and converge without further differences |
+
+The test validates:
+
+- `0700` permissions on the configuration root and both K9s directories.
+- `0644` permissions on the generated NovaLabs skin.
+- Preservation of existing `0600` configuration and aliases files.
+- SHA-256 content integrity of existing user-owned files.
+- Skin content stability during permission drift correction.
+- Empty ChezMoi diffs after successful reconciliation.
+- Repeated, unattended reconciliation.
+
+ChezMoi configuration, source, destination, cache, and persistent
+state are isolated within a temporary test directory.
+
+The test uses `chezmoi apply --force` only against its isolated
+destination to avoid interactive prompts when correcting deliberately
+introduced configuration drift.
+
+This does not change the conflict protection policy used during
+normal host reconciliation.
+
+Temporary test directories are removed automatically when the test exits.
+
+The filesystem regression suite was validated using the pinned
+ChezMoi v2.72.1 release on an AMD64 Linux filesystem.
+
 ### Configuration ownership validation
 
 Create-only configuration behavior was separately validated for LazyJournal and Network Doctor using temporary ChezMoi source and destination environments.
@@ -530,7 +617,13 @@ The tests confirmed that missing configuration files are initialized and existin
 
 ### Validation boundaries
 
-The automated regression suites do not install applications, apply host configuration, or connect to Kubernetes clusters.
+The automated regression suites do not install applications, modify
+live host configuration, or connect to Kubernetes clusters.
+
+The application and theme catalog suites are render-only.
+The shell environment suite uses isolated shell environments.
+The filesystem permission suite performs actual reconciliation
+exclusively against a temporary source and destination.
 
 Native application runtime testing remains a separate validation activity.
 
@@ -542,6 +635,7 @@ Before committing application or theme changes, run the applicable regression su
 python scripts/test-app-catalog.py
 python scripts/test-theme-catalog.py
 bash scripts/test-theme-env.sh
+bash scripts/test-theme-permissions.sh
 git diff --check
 ```
 
@@ -552,7 +646,8 @@ git diff --check
 3. Update the exact version in `apps.toml`.
 4. Review native configuration and theme compatibility against the pinned release.
 5. Update application configuration when required and run the applicable
-   application, theme, and shell environment regression suites.
+   application, theme, shell environment, and filesystem permission
+   regression suites.
 6. Review the Git diff.
 7. Commit and push the change to Forgejo.
 8. Validate on representative Linux hosts before fleet deployment.
