@@ -63,7 +63,9 @@ bootstrap_ui_init() {
             nl_ui_init \
             nl_ui_reset \
             nl_ui_animate_logo \
+            nl_ui_separator \
             nl_ui_heading \
+            nl_ui_field \
             nl_ui_status \
             nl_ui_system_identity \
             nl_ui_runtime_identity \
@@ -209,7 +211,7 @@ tmux
 vim
 "
 
-if [ "$mode" = "preview" ]; then
+bootstrap_native_preview() {
     cat <<EOF
 NovaLabs bootstrap preview
 
@@ -237,6 +239,124 @@ No changes were made.
 Apply with:
   ./install.sh --apply
 EOF
+}
+
+# Render the actual bootstrap plan without executing it.
+# Host enrollment is deliberately deferred until apply mode.
+bootstrap_enhanced_preview() {
+    bootstrap_ui_call nl_ui_animate_logo
+
+    bootstrap_ui_call nl_ui_heading "BOOTSTRAP PREVIEW"
+
+    bootstrap_ui_call nl_ui_status info \
+        "Preview mode: no installation operations will be performed."
+
+    bootstrap_ui_call nl_ui_system_identity \
+        "$repo_root" \
+        "${PRETTY_NAME:-${ID:-unknown}}" \
+        preview
+
+    bootstrap_ui_call nl_ui_field \
+        "Repository" "$repo_root"
+
+    bootstrap_ui_call nl_ui_runtime_identity \
+        "$MISE_VERSION" "$CHEZMOI_VERSION"
+
+    bootstrap_ui_call nl_ui_separator
+    bootstrap_ui_call nl_ui_heading "HOST ENROLLMENT"
+
+    bootstrap_ui_call nl_ui_field \
+        "Profile" "Unresolved" highlight
+
+    bootstrap_ui_call nl_ui_status info \
+        "Host profile resolution is deferred until ChezMoi enrollment."
+
+    bootstrap_ui_call nl_ui_status info \
+        "No host profile is inferred from the current hostname."
+
+    bootstrap_ui_call nl_ui_separator
+    bootstrap_ui_call nl_ui_heading "BOOTSTRAP PLAN"
+
+    bootstrap_ui_call nl_ui_status info \
+        "01 - Initialize pinned Mise runtime"
+
+    bootstrap_ui_call nl_ui_status info \
+        "02 - Enroll ChezMoi configuration"
+
+    bootstrap_ui_call nl_ui_status info \
+        "03 - Resolve and validate host policy"
+
+    bootstrap_ui_call nl_ui_status info \
+        "04 - Converge native prerequisites"
+
+    bootstrap_ui_call nl_ui_status info \
+        "05 - Reconcile managed configuration"
+
+    bootstrap_ui_call nl_ui_status info \
+        "06 - Install declared application versions"
+
+    bootstrap_ui_call nl_ui_status info \
+        "07 - Evaluate profile-specific Chronytop policy"
+
+    bootstrap_ui_call nl_ui_status info \
+        "08 - Audit unused Mise tool versions"
+
+    bootstrap_ui_call nl_ui_field \
+        "Pruning" "Disabled; requires --apply --prune"
+
+    bootstrap_ui_call nl_ui_separator
+    bootstrap_ui_call nl_ui_heading "NATIVE PACKAGE POLICIES"
+
+    bootstrap_ui_call nl_ui_status info \
+        "Named Debian-family profiles: full package baseline"
+
+    bootstrap_ui_call nl_ui_status info \
+        "any on Debian-family Linux: build-essential, libatomic1"
+
+    bootstrap_ui_call nl_ui_status info \
+        "any on other Linux: externally managed"
+
+    bootstrap_ui_call nl_ui_heading "NAMED-PROFILE PACKAGE BASELINE"
+
+    # Consume the authoritative installer package inventory.
+    # Package names are fixed, whitespace-separated identifiers.
+    for bootstrap_preview_package in $native_packages; do
+        bootstrap_ui_call nl_ui_status info \
+            "$bootstrap_preview_package"
+    done
+
+    bootstrap_ui_call nl_ui_separator
+    bootstrap_ui_call nl_ui_heading "PORTABLE TOOLS"
+
+    bootstrap_ui_call nl_ui_status info \
+        "Managed by the pinned Mise configuration after ChezMoi enrollment."
+
+    bootstrap_ui_call nl_ui_separator
+    bootstrap_ui_call nl_ui_heading "PREVIEW COMPLETE"
+
+    bootstrap_ui_call nl_ui_status success \
+        "No changes were made."
+
+    bootstrap_ui_call nl_ui_field \
+        "Apply with" "./install.sh --apply" highlight
+
+    bootstrap_ui_call nl_ui_reset
+
+    return 0
+}
+
+# Preview never proceeds into infrastructure execution.
+if [ "$mode" = "preview" ]; then
+    if [ "$bootstrap_ui_available" = true ]; then
+        bootstrap_enhanced_preview
+    fi
+
+    # Preserve complete native preview information if presentation
+    # was unavailable or a guarded rendering function failed.
+    if [ "$bootstrap_ui_available" != true ]; then
+        bootstrap_native_preview
+    fi
+
     exit 0
 fi
 

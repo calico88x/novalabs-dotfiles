@@ -400,6 +400,32 @@ def main():
 
     passed_test("Final animation frame consistency")
 
+    # Production entry point; no apply arguments are used.
+    for args, overrides, animated_expected, color, name in (
+        ("", {}, True, b"\x1b[38;5;", "Production 256-color animation"),
+        ("", {"COLORTERM": "truecolor"}, True, b"\x1b[38;2;", "Production truecolor animation"),
+        ("--no-animation", {}, False, b"\x1b[38;5;", "Production static color"),
+        ("--plain", {}, False, None, "Production plain CLI"),
+        ("", {"NO_COLOR": "1"}, False, None, "Production NO_COLOR"),
+        ("", {"CI": "true"}, False, None, "Production CI plain mode"),
+    ):
+        output, _, _ = run_terminal(
+            177, 28, overrides=overrides,
+            probe=f"sh ./install.sh {args}\nprintf 'RENDER_COMPLETE\\n'\n",
+        )
+        if animated_expected:
+            require(output.count(CURSOR_UP) == 22, "Production animation redraw count differs")
+        else:
+            check_static(output)
+        if color is None:
+            require(ESCAPE not in output, "Production plain mode contains ANSI")
+        else:
+            require(color in output, "Production gradient missing")
+        visible = re.sub(rb"\x1b\[[0-9;]*m", b"", output)
+        for marker in (b"BOOTSTRAP PREVIEW", b"SYSTEM IDENTITY", b"PREVIEW COMPLETE", b"No changes were made."):
+            require(marker in visible, f"Production preview missing {marker!r}")
+        passed_test(name)
+
     print("=" * 60)
     print(f"PASS: All {passed} PTY checkpoints validated")
 

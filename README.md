@@ -365,7 +365,7 @@ Preview the bootstrap first:
 ./install.sh
 ```
 
-The preview shows the platform, pinned bootstrap versions and native package set. It makes no changes.
+The production preview displays NovaLabs branding, actual system identity, pinned bootstrap versions, the planned workflow and native package policies. It performs no enrollment or installation.
 
 ### Bootstrap command-line options
 
@@ -407,12 +407,57 @@ Presentation options are repeatable and order-independent.
 They do not change host enrollment, package convergence policies,
 application selection, or infrastructure execution decisions.
 
-The optional presentation adapter and its CLI are implemented.
-Enhanced production rendering is being integrated incrementally;
-the current installer retains its original output format.
+Enhanced production preview rendering is implemented. The installer
+selects animated, static or plain presentation according to terminal
+capabilities and CLI preferences. An unavailable presentation library or
+explicit rendering failure selects the original native preview.
+Apply-mode presentation integration remains pending; the existing
+apply workflow and native output are unchanged.
 
 See [Bootstrap presentation architecture](docs/bootstrap-ui.md)
 for implementation details and regression coverage.
+
+### Bootstrap integration architecture
+
+The following diagram describes the current production integration after
+argument, privilege and platform guards. FreeBSD retains its separate
+stage-only exit. Apply-mode presentation and lifecycle integration remain
+pending.
+
+```mermaid
+flowchart TD
+    A["install.sh"] --> B["Arguments and safety guards"]
+    B --> C["Initialize optional presentation"]
+    C --> D{"Execution mode"}
+    D -->|Preview| E{"Presentation available?"}
+    E -->|Yes| F["Enhanced production preview"]
+    E -->|No| G["Original native preview"]
+    F --> H{"Presentation still available?"}
+    H -->|Yes| I["Preview complete"]
+    H -->|No| G
+    G --> I
+    D -->|Apply| J["Existing bootstrap workflow"]
+    J --> K{"Execution result"}
+    K -->|Success| L["Successful completion"]
+    K -->|Failure| M["Execution failure"]
+    I --> N["Exit 0"]
+    L --> O["Exit"]
+    M --> O
+
+    classDef brand fill:#BD93F9,stroke:#6272A4,color:#161923
+    classDef success fill:#50FA7B,stroke:#50FA7B,color:#161923
+    classDef failure fill:#FF5555,stroke:#FF5555,color:#161923
+    classDef decision fill:#FF79C6,stroke:#FF79C6,color:#161923
+    classDef process fill:#282A36,stroke:#6272A4,color:#F7F7FB
+    classDef fallback fill:#FF7F3F,stroke:#FF7F3F,color:#161923
+
+    class A,F brand
+    class I,L,N success
+    class M failure
+    class D,E,H,K decision
+    class B,C,J,O process
+    class G fallback
+```
 
 ### Bootstrap presentation preview
 
@@ -434,8 +479,10 @@ sh scripts/preview-bootstrap-ui.sh --plain
 The presentation preview simulates execution stages without enrolling
 the host, installing applications, or modifying system configuration.
 
-The presentation engine is currently independent of `install.sh`.
-Production integration is planned for a subsequent implementation phase.
+The standalone simulator remains available for testing selected host
+profiles and simulated stage results. Unlike the simulator, the production
+preview reports actual installer configuration, leaves the host profile
+unresolved and does not simulate successful installation stages.
 
 See [Bootstrap UI](docs/bootstrap-ui.md) for presentation architecture,
 terminal compatibility, supported arguments, and regression testing.
@@ -462,9 +509,9 @@ echo "$NOVALAB_HOST_PROFILE"
 
 For an unregistered Linux machine, choose `any`. This applies the
 shared NovaLabs configuration without requiring a dedicated host
-definition. Unlike named Debian-family profiles, `any` skips APT
-package convergence and leaves native dependency management to the
-host operating system.
+definition. Unlike named Debian-family profiles, `any` converges only
+`build-essential` and `libatomic1` on Debian-family Linux. On other Linux
+distributions, native dependencies are externally managed.
 
 ### High-scrutiny enrollment
 

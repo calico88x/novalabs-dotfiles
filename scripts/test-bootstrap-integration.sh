@@ -16,6 +16,7 @@ FIXTURE="$TEST_ROOT/repository"
 OUTPUT="$TEST_ROOT/output.log"
 ERROR="$TEST_ROOT/error.log"
 BASELINE="$TEST_ROOT/baseline.log"
+NATIVE_BASELINE="$TEST_ROOT/native-baseline.log"
 
 passed=0
 
@@ -75,29 +76,38 @@ require_status() {
 
 require_preview() {
     require_status 0
-
-    grep -Fq "NovaLabs bootstrap preview" "$OUTPUT" ||
-        fail "Original preview heading missing"
-
-    grep -Fq "Native package policies:" "$OUTPUT" ||
-        fail "Native package policy information missing"
-
     grep -Fq "No changes were made." "$OUTPUT" ||
         fail "Non-mutating preview confirmation missing"
-
-    [[ ! -s "$ERROR" ]] ||
-        fail "Unexpected preview diagnostics"
-
+    [[ ! -s "$ERROR" ]] || fail "Unexpected preview diagnostics"
     if grep -q $'\033' "$OUTPUT"; then
         fail "Unexpected ANSI sequences in redirected preview"
     fi
 }
 
-require_baseline() {
+require_enhanced() {
     require_preview
+    local heading
+    for heading in "BOOTSTRAP PREVIEW" "SYSTEM IDENTITY"         "BOOTSTRAP RUNTIME" "HOST ENROLLMENT" "BOOTSTRAP PLAN"         "NATIVE PACKAGE POLICIES" "NAMED-PROFILE PACKAGE BASELINE"         "PORTABLE TOOLS" "PREVIEW COMPLETE"
+    do
+        grep -Fxq "$heading" "$OUTPUT" || fail "Missing $heading"
+    done
+    grep -Eq '^  Profile[[:space:]]+Unresolved$' "$OUTPUT" ||
+        fail "Host profile was not deferred"
+    grep -Eq '^  Mode[[:space:]]+PREVIEW$' "$OUTPUT" || fail "Mode missing"
+    grep -Fxq "  [OK] No changes were made." "$OUTPUT" || fail "Completion missing"
+    if grep -Fxq "NovaLabs bootstrap preview" "$OUTPUT"; then
+        fail "Unexpected native fallback"
+    fi
+}
 
-    cmp -s "$BASELINE" "$OUTPUT" ||
-        fail "Preview output differs from the baseline"
+require_baseline() {
+    require_enhanced
+    cmp -s "$BASELINE" "$OUTPUT" || fail "Enhanced preview differs from baseline"
+}
+
+require_native() {
+    require_preview
+    cmp -s "$NATIVE_BASELINE" "$OUTPUT" || fail "Native preview differs from baseline"
 }
 
 printf '%s\n' \
@@ -115,9 +125,53 @@ fi
 # 1. Valid production preview.
 reset_fixture
 run_installer
-require_preview
+require_enhanced
 
 cp "$OUTPUT" "$BASELINE"
+
+# Independent native expectation preserving the pre-rendering format.
+(
+    . /etc/os-release
+    cat <<EOF
+NovaLabs bootstrap preview
+
+Platform:          Linux
+Distribution:      ${ID:-unknown}
+Repository:        $FIXTURE
+
+Bootstrap:
+  Mise              2026.8.9
+  ChezMoi           2.72.1
+
+Native package policies:
+  Named Debian-family profiles: full package baseline below
+  any on Debian-family Linux:   build-essential, libatomic1
+  any on other Linux:           externally managed
+
+Named-profile package baseline:
+  - build-essential
+  - ca-certificates
+  - curl
+  - git
+  - gzip
+  - libatomic1
+  - htop
+  - openssh-server
+  - procps
+  - sudo
+  - tar
+  - tmux
+  - vim
+
+Portable tools:
+  Managed by the pinned Mise configuration after ChezMoi enrollment.
+
+No changes were made.
+
+Apply with:
+  ./install.sh --apply
+EOF
+) > "$NATIVE_BASELINE"
 
 pass "Production preview baseline"
 
@@ -127,7 +181,7 @@ reset_fixture
 rm -- "$FIXTURE/scripts/lib/bootstrap-ui.sh"
 
 run_installer
-require_baseline
+require_native
 
 pass "Production preview without presentation library"
 
@@ -138,7 +192,7 @@ printf '%s\n' "if then" \
     > "$FIXTURE/scripts/lib/bootstrap-ui.sh"
 
 run_installer
-require_baseline
+require_native
 
 pass "Production preview with invalid library syntax"
 
@@ -152,7 +206,7 @@ nl_ui_init() {
 EOF
 
 run_installer
-require_baseline
+require_native
 
 pass "Production preview with incomplete library"
 
@@ -167,7 +221,7 @@ nl_ui_init() {
 EOF
 
 run_installer
-require_baseline
+require_native
 
 pass "Production preview after initialization failure"
 
@@ -198,6 +252,7 @@ pass "Production preview with malformed theme catalog"
 reset_fixture
 
 cat > "$FIXTURE/scripts/lib/bootstrap-ui.sh" <<'EOF'
+: > "$repo_root/unexpected-init"
 printf '%s\n' "UNEXPECTED_LIBRARY_EXECUTION" >&2
 exit 42
 EOF
@@ -210,6 +265,8 @@ grep -Fq "Usage:" "$OUTPUT" ||
 
 [[ ! -s "$ERROR" ]] ||
     fail "Help unexpectedly initialized presentation"
+
+[[ ! -e "$FIXTURE/unexpected-init" ]] || fail "Early guard loaded presentation"
 
 pass "Help exits before presentation initialization"
 
@@ -224,6 +281,8 @@ if grep -Fq "UNEXPECTED_LIBRARY_EXECUTION" "$ERROR"; then
     fail "Invalid arguments initialized presentation"
 fi
 
+[[ ! -e "$FIXTURE/unexpected-init" ]] || fail "Early guard loaded presentation"
+
 pass "Invalid argument guard precedes presentation"
 
 # 10. Prune without apply retains its original safety guard.
@@ -236,6 +295,8 @@ grep -Fq -- "--prune requires --apply" "$ERROR" ||
 if grep -Fq "UNEXPECTED_LIBRARY_EXECUTION" "$ERROR"; then
     fail "Prune guard initialized presentation"
 fi
+
+[[ ! -e "$FIXTURE/unexpected-init" ]] || fail "Early guard loaded presentation"
 
 pass "Prune safety guard precedes presentation"
 
@@ -312,13 +373,13 @@ reset_fixture
 rm -- "$FIXTURE/scripts/lib/bootstrap-ui.sh"
 
 run_installer --plain
-require_baseline
+require_native
 
 run_installer --no-animation
-require_baseline
+require_native
 
 run_installer --plain --no-animation
-require_baseline
+require_native
 
 pass "Presentation CLI without optional library"
 
@@ -339,6 +400,9 @@ pass "Presentation arguments preserve invalid option rejection"
 # library and authoritative theme catalog remain unchanged.
 reset_fixture
 
+sed -i 's/^nl_ui_init() {/nl_ui_original_init() {/' "$FIXTURE/scripts/lib/bootstrap-ui.sh"
+grep -q '^nl_ui_original_init() {' "$FIXTURE/scripts/lib/bootstrap-ui.sh" ||
+    fail "Could not instrument initialization"
 cat >> "$FIXTURE/scripts/lib/bootstrap-ui.sh" <<'EOF'
 
 nl_ui_init() {
@@ -346,8 +410,7 @@ nl_ui_init() {
         "$NL_UI_PLAIN" \
         "$NL_UI_NO_ANIMATION" \
         > "$1/cli-state.log"
-
-    return 0
+    nl_ui_original_init "$@"
 }
 EOF
 
@@ -387,6 +450,57 @@ require_baseline
 require_cli_state true true
 
 pass "Presentation CLI state propagation"
+
+# 21. Rendering failure before any enhanced output.
+reset_fixture
+cat >> "$FIXTURE/scripts/lib/bootstrap-ui.sh" <<'EOF'
+nl_ui_animate_logo() { return 42; }
+EOF
+run_installer
+require_native
+pass "Immediate rendering failure native recovery"
+
+# 22. Rendering failure after partial enhanced output.
+reset_fixture
+cat >> "$FIXTURE/scripts/lib/bootstrap-ui.sh" <<'EOF'
+nl_ui_runtime_identity() { return 42; }
+EOF
+run_installer
+require_preview
+grep -Fxq "SYSTEM IDENTITY" "$OUTPUT" || fail "Partial output missing"
+sed -n '/^NovaLabs bootstrap preview$/,$p' "$OUTPUT" > "$TEST_ROOT/recovered.log"
+cmp -s "$NATIVE_BASELINE" "$TEST_ROOT/recovered.log" || fail "Incomplete native recovery"
+pass "Partial rendering failure native recovery"
+
+# 23. Runtime versions and package inventory come from installer constants.
+reset_fixture
+sed -i 's/^MISE_VERSION=.*/MISE_VERSION="fixture-mise"/;s/^CHEZMOI_VERSION=.*/CHEZMOI_VERSION="fixture-chezmoi"/;s/^build-essential$/fixture-package/' "$FIXTURE/install.sh"
+run_installer
+require_enhanced
+grep -Eq '^  Mise target[[:space:]]+fixture-mise$' "$OUTPUT" || fail "Mise pin not propagated"
+grep -Eq '^  ChezMoi target[[:space:]]+fixture-chezmoi$' "$OUTPUT" || fail "ChezMoi pin not propagated"
+grep -Fxq '  [INFO] fixture-package' "$OUTPUT" || fail "Package inventory not propagated"
+pass "Authoritative runtime and package data"
+
+# 24. Preview must not invoke infrastructure tools.
+reset_fixture
+mkdir -p "$TEST_ROOT/blocked-bin"
+for tool in curl wget sudo apt-get mise chezmoi; do
+    cat > "$TEST_ROOT/blocked-bin/$tool" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$0" >> "$PREVIEW_SENTINEL"
+exit 99
+EOF
+    chmod +x "$TEST_ROOT/blocked-bin/$tool"
+done
+# Include the installer's absolute Mise path in the isolated HOME.
+mkdir -p "$TEST_ROOT/home/.local/bin"
+cp "$TEST_ROOT/blocked-bin/mise" "$TEST_ROOT/home/.local/bin/mise"
+HOME="$TEST_ROOT/home" PATH="$TEST_ROOT/blocked-bin:$PATH" \
+    PREVIEW_SENTINEL="$TEST_ROOT/unexpected-command" run_installer
+require_enhanced
+[[ ! -e "$TEST_ROOT/unexpected-command" ]] || fail "Preview invoked infrastructure tools"
+pass "Preview infrastructure command isolation"
 
 printf '%s\n' \
     "============================================================"
