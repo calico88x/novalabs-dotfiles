@@ -382,7 +382,7 @@ bootstrap_exit() {
     if [ -n "$chronytop_stage" ] &&
        { [ -e "$chronytop_stage" ] || [ -L "$chronytop_stage" ]; }
     then
-        sudo rm -f -- "$chronytop_stage" ||
+        sudo -n rm -f -- "$chronytop_stage" ||
             printf 'novalabs-dotfiles: cleanup failed: %s\n' "$chronytop_stage" >&2 || true
     fi
 

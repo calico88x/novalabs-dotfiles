@@ -532,6 +532,26 @@ The combined apply integration suite contains 67 passing checkpoints.
 Signal delivery is exercised in isolated fixtures; live apply acceptance
 remains pending.
 
+### Integration hardening
+
+Phase 4.12 makes privileged finalization non-interactive (`sudo -n`),
+propagates explicit summary component failures, and extends full apply
+fixtures to a controlling pseudo-terminal. The existing staged cleanup
+checks now require the non-interactive invocation. Four additional checks
+cover partial summary failure on success and failure, colored full apply,
+and terminal-generated Ctrl-C during audit. All four additional checkpoints
+passed on AMD64 Ubuntu WSL:
+
+| Checkpoint | Result |
+|---|---|
+| Partial summary failure preserves status 0 and native fallback | Passed |
+| Partial summary failure preserves status 71 and native fallback | Passed |
+| Controlling terminal apply: success and final ANSI reset | Passed |
+| Controlling terminal apply: interrupt and final ANSI reset | Passed |
+
+The combined apply integration suite contains 71 passing checkpoints.
+The partial summary can already be visible before native fallback is emitted.
+
 ### Integration checkpoint
 
 Phase 4.05 validates enhanced production preview rendering and native
@@ -543,6 +563,8 @@ Phase 4.08 instruments stages 04–05; extended regression acceptance is complet
 Phase 4.09 instruments stages 06–07; regression acceptance is complete.
 Phase 4.10 instruments Stage 08; full apply fixture acceptance is complete.
 Phase 4.11 integrates unified exit handling; regression acceptance is complete.
+Phase 4.12 hardens cleanup and summary propagation; controlling-terminal
+apply regression acceptance is complete.
 No new mandatory runtime dependencies are introduced.
 
 ## Terminal compatibility
@@ -999,8 +1021,8 @@ complementary regression suites.
 | Pseudo-terminal regression | 17 | Passed |
 | Production presentation adapter | 11 | Passed |
 | Production installer integration | 24 | Passed |
-| Apply integration | 67 | Passed |
-| **Total** | **155** | **Passed** |
+| Apply integration | 71 | Passed |
+| **Total** | **159** | **Passed** |
 
 Presentation regression tests validate branding, rendering,
 palette initialization, system identity, host palettes, stage
@@ -1019,6 +1041,8 @@ Apply integration tests validate all eight stages and optional host presentation
 using command shims, separate cutoffs before stages 04, 06 and 08,
 and full-length fixtures reaching the natural process exit. Lifecycle fixtures
 exercise summary accounting, signal delivery and best-effort cleanup.
+The apply suite also invokes `scripts/test-bootstrap-apply-pty.py` to
+validate colored apply and terminal-generated interruption.
 
 ### Pseudo-terminal regression testing
 
@@ -1174,7 +1198,7 @@ bash scripts/test-bootstrap-integration.sh
 bash scripts/test-bootstrap-runtime.sh
 ```
 
-The combined lifecycle checkpoint contains 155 passing
+The combined integration hardening checkpoint contains 159 passing
 regression checks.
 
 Python remains a development-only dependency.
@@ -1189,8 +1213,8 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Pseudo-terminal regression | 17/17 passed |
 | Presentation adapter regression | 11/11 passed |
 | Production installer integration | 24/24 passed |
-| Apply integration | 67/67 passed |
-| **Combined regression coverage** | **155/155 passed** |
+| Apply integration | 71/71 passed |
+| **Combined regression coverage** | **159/159 passed** |
 | Truecolor animation | Passed |
 | ANSI 256-color animation | Passed |
 | Static presentation | Passed |
@@ -1205,9 +1229,9 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 The current acceptance record consists of 36 shell presentation
 checkpoints, 17 pseudo-terminal checkpoints, 11 presentation
 adapter checkpoints, 24 production installer integration checkpoints
-and 67 apply integration checkpoints.
+and 71 apply integration checkpoints.
 
-All 155 checkpoints passed on the AMD64 WSL development
+All 159 checkpoints passed on the AMD64 WSL development
 environment.
 
 These results establish presentation, initialization, CLI, production
@@ -1244,12 +1268,10 @@ The `scripts/` and `docs/` directories are excluded from ChezMoi reconciliation.
 
 The following areas require additional validation or integration work:
 
-- Completion of production presentation lifecycle integration.
-- Enhanced production apply rendering.
-- Live acceptance of authoritative ChezMoi host identity presentation.
-- Preservation of real command exit statuses.
-- Production presentation failure isolation during apply execution.
-- Signal interruption and cleanup behavior.
+- Live acceptance of production apply rendering and authoritative host identity.
+- Live command exit-status and presentation isolation validation.
+- Signal interruption during arbitrary foreground children and cleanup.
+- Non-interactive cleanup can leave an artifact if sudo authorization is unavailable.
 - Non-UTF-8 compatibility outside branding.
 - Extremely narrow terminal layout acceptance.
 - Live AMD64 and ARM64 bootstrap canary validation.
@@ -1298,7 +1320,7 @@ not simulate execution-stage timings.
 | 4.09 — Applications and Chronytop | Validated (isolated apply prefix) |
 | 4.10 — Application audit and optional pruning | Validated (isolated full apply) |
 | 4.11 — Exit-status preservation and cleanup | Validated (isolated lifecycle) |
-| 4.12 — Integration regression testing | Pending |
+| 4.12 — Integration regression testing | Validated (isolated integration) |
 | 4.13 — Documentation and implementation acceptance | Pending |
 
 Presentation safety hardening was introduced in commit `c3a6dfa`
@@ -1353,6 +1375,12 @@ checks on AMD64 Ubuntu WSL. Actual HUP, INT and TERM delivery to fixture
 installers, summary accounting, fallback and staged-artifact cleanup are
 validated. Live apply acceptance, broader terminal interruption behavior
 and integration review remain pending.
+
+The integration hardening checkpoint expands coverage to 159 passing
+checks on AMD64 Ubuntu WSL. Non-interactive privileged cleanup, explicit
+summary component failures, and terminal-generated Ctrl-C with final ANSI
+reset are validated in fixtures. Live apply and dedicated unprivileged
+cleanup failure coverage remain pending.
 
 The branding foundation was introduced in commit `9307275` and merged into `main` at `621e8abc3599630a00edb8a3aaf596f23a85304d`.
 
