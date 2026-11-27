@@ -29,7 +29,7 @@ TUI_KIT_TEMPLATE = (
     "private_dot_config/novalab/themes/tui-kit.toml.tmpl"
 )
 K9S_TEMPLATE = (
-    "private_dot_config/k9s/skins/novalab.yaml.tmpl"
+    "private_dot_config/private_k9s/private_skins/novalab.yaml.tmpl"
 )
 LAZYJOURNAL_TEMPLATE = (
     "private_dot_config/lazyjournal/create_config.yml.tmpl"
@@ -77,6 +77,39 @@ def require(condition, message):
 
     if not condition:
         raise AssertionError(message)
+
+
+def test_source_permissions():
+    """Validate private K9s source directory attributes."""
+
+    template = ROOT / K9S_TEMPLATE
+
+    require(
+        template.is_file(),
+        "K9s skin source template is missing",
+    )
+
+    require(
+        template.parent.name == "private_skins",
+        "K9s skins directory must use the private attribute",
+    )
+
+    require(
+        template.parent.parent.name == "private_k9s",
+        "K9s configuration directory must use the private attribute",
+    )
+
+    require(
+        template.parent.parent.parent.name == "private_dot_config",
+        "K9s configuration must remain under private_dot_config",
+    )
+
+    require(
+        not (ROOT / "private_dot_config/k9s").exists(),
+        "Legacy non-private K9s source directory still exists",
+    )
+
+    print("PASS: K9s private source directory attributes")
 
 
 def load_toml(path):
@@ -481,6 +514,7 @@ def main():
     print("=" * 60)
 
     test_catalog(theme, hosts)
+    test_source_permissions()
 
     scenarios = 0
     configurations = 0

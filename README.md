@@ -3,7 +3,7 @@
 ChezMoi + Mise managed configuration for NovaLabs hosts.
 
 - **Authoritative repository:** Forgejo
-- **GitHub:** public mirror
+- **GitHub:** automatically synchronized public push mirror
 - **Configuration owner:** ChezMoi
 - **Portable CLI owner:** Mise
 - **System/package owner:** native OS or platform vendor
@@ -309,11 +309,12 @@ Important source paths:
 - `.chezmoitemplates/apps/selection` — shared application eligibility selector
 - `scripts/test-app-catalog.py` — automated application catalog validation
 - `private_dot_config/novalab/themes/` — shared infrastructure TUI palettes
-- `private_dot_config/k9s/skins/` — host-specific K9s skins
+- `private_dot_config/private_k9s/private_skins/` — host-specific K9s skins and private directory permissions
 - `private_dot_config/lazyjournal/` — initial LazyJournal interface configuration
 - `private_dot_config/netdoc/` — initial Network Doctor theme preference
 - `scripts/test-theme-catalog.py` — automated theme catalog validation
 - `scripts/test-theme-env.sh` — shell theme activation regression tests
+- `scripts/test-theme-permissions.sh` — isolated Linux filesystem permission validation
 
 ## Bootstrap a new Linux host
 
@@ -550,7 +551,7 @@ Common mappings:
 | `dot_tmux.conf` | `~/.tmux.conf` |
 | `dot_vimrc` | `~/.vimrc` |
 | `private_dot_config/novalab/themes/tui-kit.toml.tmpl` | `~/.config/novalab/themes/tui-kit.toml` |
-| `private_dot_config/k9s/skins/novalab.yaml.tmpl` | `~/.config/k9s/skins/novalab.yaml` |
+| `private_dot_config/private_k9s/private_skins/novalab.yaml.tmpl` | `~/.config/k9s/skins/novalab.yaml` |
 | `private_dot_config/lazyjournal/create_config.yml.tmpl` | `~/.config/lazyjournal/config.yml` (create-only) |
 | `private_dot_config/netdoc/create_theme.tmpl` | `~/.config/netdoc/theme` (create-only) |
 
@@ -674,6 +675,29 @@ application selector.
 See [Infrastructure TUI themes](docs/application-catalog.md#infrastructure-tui-themes)
 for implementation details and configuration ownership rules.
 
+#### K9s configuration ownership
+
+NovaLabs manages the host-specific K9s skin and restrictive directory
+permissions through ChezMoi.
+
+| Destination | Permissions |
+|---|---|
+| `~/.config/k9s/` | `0700` |
+| `~/.config/k9s/skins/` | `0700` |
+| `~/.config/k9s/skins/novalab.yaml` | `0644` |
+
+General K9s configuration, aliases, Kubernetes credentials, plugins,
+and runtime state remain user-owned.
+
+Existing K9s installations must be retained until the Mise-managed
+replacement and shell PATH precedence have been verified.
+
+Package-managed installations must be retired through their package
+manager. Standalone installations require a recoverable rollback path.
+
+See the application catalog for host-specific ownership exceptions
+and filesystem permission validation.
+
 #### Theme regression testing
 
 Theme changes must be validated from the repository root:
@@ -681,17 +705,24 @@ Theme changes must be validated from the repository root:
 ```bash
 python scripts/test-theme-catalog.py
 bash scripts/test-theme-env.sh
+bash scripts/test-theme-permissions.sh
 ```
 
 The theme catalog test requires Python 3.11 or newer, ChezMoi, and
 PyYAML in the development environment.
 
-The shell regression suite requires Bash and can be executed on Linux
+The shell regression suites require Bash and can be executed on Linux
 or through WSL.
 
-These tests validate configuration eligibility, deterministic rendering,
-palette mappings, and shell activation behavior without applying
-configuration to live hosts.
+The filesystem permission test additionally requires ChezMoi on PATH
+and standard Linux filesystem utilities.
+
+It validates fresh installation permissions, existing configuration
+preservation, permission drift correction, and repeated reconciliation
+against an isolated temporary destination.
+
+No live host configuration or Kubernetes credentials are modified
+by these regression tests.
 
 Native application behavior must also be checked when introducing new
 theme properties or upgrading applications.
@@ -946,7 +977,8 @@ Do not change OPNsense to `managed` until the FreeBSD package, filesystem, shell
 
 ## Git workflow
 
-Forgejo is authoritative. GitHub is a public mirror.
+Forgejo is authoritative. GitHub is an automatically synchronized
+public push mirror.
 
 Repository changes should be developed on feature branches, reviewed,
 validated, and committed before integration into `main`.
@@ -957,9 +989,17 @@ On the authoring workstation, inspect the configured remotes:
 git remote -v
 ```
 
-The authoring repository uses the `forgejo` remote for authoritative
-repository operations and the `github` remote for public mirror
-synchronization.
+The authoring repository uses the following remotes:
+
+| Remote | Responsibility |
+|---|---|
+| `forgejo` | Authoritative repository operations and feature branch publication |
+| `github` | Public mirror inspection and synchronization verification |
+
+Normal development pushes are directed to Forgejo.
+
+Forgejo automatically mirrors repository changes, including feature
+branches and main branch updates, to GitHub.
 
 Before committing, run the applicable regression tests and review
 the changes:
@@ -975,10 +1015,11 @@ For bootstrap shell-script changes:
 wsl bash -n /mnt/c/Users/Nova/workspaces/novalabs-dotfiles/install.sh
 ```
 
-For theme environment changes:
+For theme environment and filesystem permission changes:
 
 ```bash
 bash scripts/test-theme-env.sh
+bash scripts/test-theme-permissions.sh
 ```
 
 Stage the intended files explicitly and review the staged changes
@@ -992,14 +1033,49 @@ git diff --cached
 Push the feature branch to Forgejo and review it through a pull request
 before integrating it into `main`.
 
-Feature branch publication, pull request integration, public mirror
-synchronization, and host deployment are separate operations.
+### Public mirror verification
 
-Synchronize the GitHub mirror only after the authoritative `main`
-branch contains the reviewed changes.
+After integrating reviewed changes into the authoritative `main`
+branch, verify that GitHub has received the same commit.
+
+```powershell
+git rev-parse main
+git ls-remote --heads forgejo refs/heads/main
+git ls-remote --heads github refs/heads/main
+```
+
+All three commit identifiers should match before deploying that
+release through the GitHub mirror.
+
+Refresh local GitHub remote-tracking references when necessary:
+
+```powershell
+git fetch --prune github
+git log --oneline github/main..main
+```
+
+A stale local remote-tracking reference does not necessarily indicate
+that the remote repository is behind.
+
+Use `git ls-remote` to inspect the actual remote branch state.
+
+Manual pushes to GitHub are not required during normal repository
+development or deployment. Investigate automatic mirror failures
+rather than bypassing the authoritative repository workflow.
+
+### Host deployment
+
+Feature branch publication, pull request integration, mirror
+verification, and host deployment remain separate checkpoints.
+
+Automatic repository mirroring does not automatically apply
+configuration changes to managed hosts.
 
 Hosts may clone or pull from the public GitHub mirror when Forgejo
 SSH credentials are not available.
+
+Synchronize hosts using fast-forward-only Git operations and follow
+the normal preview, dry-run, reconciliation, and verification workflow.
 
 ## Mise garbage collection
 
