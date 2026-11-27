@@ -419,7 +419,7 @@ Chronytop policy and application audit with optional pruning are also tracked.
 Existing infrastructure commands and native output
 remain unchanged except for unified exit and cleanup handling. Apply reports
 completion or failure using the original process status, with native fallback
-when presentation is unavailable. Signal cleanup is best effort.
+when presentation is unavailable. Signal cleanup is best effort; privileged finalization is non-interactive.
 
 See [Bootstrap presentation architecture](docs/bootstrap-ui.md)
 for implementation details and regression coverage.

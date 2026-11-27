@@ -1242,48 +1242,48 @@ nl_ui_summary() (
         "$NL_UI_TRACKER_STARTED" \
         "$nl_ui_finished")
 
-    printf '\n'
-    nl_ui_separator
+    printf '\n' || return 1
+    nl_ui_separator || return 1
 
     if [ "$nl_ui_exit_status" -ne 0 ] ||
        [ "$NL_UI_STAGE_FAILED" -ne 0 ]
     then
-        nl_ui_heading "BOOTSTRAP FAILED"
+        nl_ui_heading "BOOTSTRAP FAILED" || return 1
 
         nl_ui_status failure \
-            "Bootstrap did not complete successfully."
+            "Bootstrap did not complete successfully." || return 1
 
     elif [ "$nl_ui_processed" -eq "$NL_UI_STAGE_TOTAL" ] &&
          [ "$NL_UI_STAGE_ACTIVE" = false ]
     then
-        nl_ui_heading "BOOTSTRAP COMPLETE"
+        nl_ui_heading "BOOTSTRAP COMPLETE" || return 1
 
         nl_ui_status success \
-            "NovaLabs bootstrap completed successfully."
+            "NovaLabs bootstrap completed successfully." || return 1
 
     else
-        nl_ui_heading "BOOTSTRAP INCOMPLETE"
+        nl_ui_heading "BOOTSTRAP INCOMPLETE" || return 1
 
         nl_ui_status warning \
-            "Not all planned stages were completed."
+            "Not all planned stages were completed." || return 1
     fi
 
-    printf '\n'
+    printf '\n' || return 1
 
     nl_ui_field "Stages processed" \
-        "$nl_ui_processed/$NL_UI_STAGE_TOTAL" highlight
+        "$nl_ui_processed/$NL_UI_STAGE_TOTAL" highlight || return 1
 
-    nl_ui_field "Completed" "$NL_UI_STAGE_COMPLETED"
-    nl_ui_field "Skipped" "$NL_UI_STAGE_SKIPPED"
-    nl_ui_field "Failed" "$NL_UI_STAGE_FAILED"
+    nl_ui_field "Completed" "$NL_UI_STAGE_COMPLETED" || return 1
+    nl_ui_field "Skipped" "$NL_UI_STAGE_SKIPPED" || return 1
+    nl_ui_field "Failed" "$NL_UI_STAGE_FAILED" || return 1
 
     nl_ui_field "Elapsed time" \
-        "${nl_ui_total_duration}s" highlight
+        "${nl_ui_total_duration}s" highlight || return 1
 
-    nl_ui_field "Exit status" "$nl_ui_exit_status" highlight
+    nl_ui_field "Exit status" "$nl_ui_exit_status" highlight || return 1
 
-    printf '\n'
+    printf '\n' || return 1
 
-    nl_ui_separator
+    nl_ui_separator || return 1
     nl_ui_reset
 )

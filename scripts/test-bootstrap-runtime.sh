@@ -277,12 +277,12 @@ case "$1" in
         [ "${REPLACE_STATUS:-0}" = 0 ] || exit "$REPLACE_STATUS"
         mv -- "$4" "$5"
         ;;
-    rm)
-        [ "$#" = 4 ] && [ "$2 $3" = '-f --' ] || exit 98
-        case "$4" in "$FIXTURE"/managed/.chronytop.*) ;; *) exit 98 ;; esac
+    -n)
+        [ "$#" = 5 ] && [ "$2 $3 $4" = 'rm -f --' ] || exit 98
+        case "$5" in "$FIXTURE"/managed/.chronytop.*) ;; *) exit 98 ;; esac
         printf '%s\n' cleanup-stage >> "$TRACE"
         [ "${CLEANUP_STATUS:-0}" = 0 ] || exit "$CLEANUP_STATUS"
-        rm -f -- "$4"
+        rm -f -- "$5"
         ;;
     *) printf '%s\n' BLOCKED:sudo >> "$TRACE"; exit 99 ;;
 esac
@@ -970,6 +970,54 @@ grep -Fq 'cleanup failed:' "$ERR" || fail 'Missing cleanup diagnostic'
 managed_trace checksums download stage-binary cleanup-stage
 [[ -n "$(find "$FIXTURE/managed" -name '.chronytop.*' -print -quit)" ]] || fail 'Cleanup failure fixture missing'
 pass 'Privileged cleanup failure preserves original status'
+
+# Cross-component hardening: exercise the real summary after a late renderer error.
+for outcome in 0 71; do
+    reset_fixture full
+    sed -i 's/^nl_ui_field() (/nl_ui_saved_field() (/' "$FIXTURE/scripts/lib/bootstrap-ui.sh"
+    grep -Fxq 'nl_ui_saved_field() (' "$FIXTURE/scripts/lib/bootstrap-ui.sh" || fail 'Missing field renderer'
+    cat >> "$FIXTURE/scripts/lib/bootstrap-ui.sh" <<'EOF'
+nl_ui_field() {
+    if [ "$1" = 'Stages processed' ]; then
+        printf '%s\n' PARTIAL_SUMMARY_FAILURE
+        return 76
+    fi
+    nl_ui_saved_field "$@"
+}
+EOF
+    run_apply AUDIT_STATUS="$outcome"
+    status "$outcome"
+    contains PARTIAL_SUMMARY_FAILURE
+    if [[ "$outcome" == 0 ]]; then
+        contains 'BOOTSTRAP COMPLETE'
+        [[ $(grep -Fc 'NovaLabs bootstrap completed successfully.' "$OUT") == 2 ]] || fail 'Missing native success fallback after partial summary'
+    else
+        contains 'BOOTSTRAP FAILED'
+        grep -Fq 'bootstrap failed (exit status: 71)' "$ERR" || fail 'Missing native failure fallback'
+        absent 'BOOTSTRAP COMPLETE'
+    fi
+    full_trace audit
+    pass "Partial summary failure preserves status $outcome and native fallback"
+done
+
+# Reuse the exact full apply fixture under a real controlling terminal.
+# Python is a development dependency only. The child owns a separate session.
+for scenario in success interrupt; do
+    reset_fixture full
+    if [[ "$scenario" == interrupt ]]; then
+        # Replace the mock audit output with a bounded foreground wait.
+        sed -i '/printf.*NATIVE_AUDIT_OUTPUT/a\    sleep 10' "$HOME_FIX/.local/bin/mise"
+    fi
+    python3 "$ROOT/scripts/test-bootstrap-apply-pty.py" "$FIXTURE" "$HOME_FIX" "$BIN" "$TMP" "$TRACE" "$OUT" "$scenario" || fail "PTY apply $scenario"
+    if [[ "$scenario" == success ]]; then
+        full_trace audit
+    else
+        full_trace audit
+    fi
+    [[ -z "$(find "$TMP" -mindepth 1 -print -quit)" ]] || fail 'PTY temporary artifact leaked'
+    no_stage_file
+    pass "Controlling terminal apply: $scenario and final ANSI reset"
+done
 
 printf '%s\n' '============================================================'
 printf 'PASS: All %s apply integration checkpoints validated\n' "$passed"
