@@ -14,7 +14,20 @@ NL_UI_NO_ANIMATION=false
 bootstrap_ui_available=false
 
 usage() {
-    printf 'Usage: %s [--apply] [--prune]\n' "$0"
+    cat <<EOF
+Usage: $0 [options]
+
+Execution:
+  --apply           Execute the bootstrap workflow
+  --prune           Prune unused Mise versions (requires --apply)
+
+Presentation:
+  --plain           Disable presentation colors and animation
+  --no-animation    Disable startup animation
+  -h, --help        Display this help
+
+Without --apply, the bootstrap runs in non-mutating preview mode.
+EOF
 }
 
 die() {
@@ -119,6 +132,13 @@ while [ "$#" -gt 0 ]; do
             ;;
         --prune)
             prune=true
+            ;;
+        --plain)
+            NL_UI_PLAIN=true
+            NL_UI_NO_ANIMATION=true
+            ;;
+        --no-animation)
+            NL_UI_NO_ANIMATION=true
             ;;
         -h|--help)
             usage

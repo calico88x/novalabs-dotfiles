@@ -367,6 +367,53 @@ Preview the bootstrap first:
 
 The preview shows the platform, pinned bootstrap versions and native package set. It makes no changes.
 
+### Bootstrap command-line options
+
+The production bootstrap separates infrastructure execution
+controls from presentation preferences.
+
+| Argument | Purpose |
+|---|---|
+| `--apply` | Execute the bootstrap workflow |
+| `--prune` | Prune unused Mise versions; requires `--apply` |
+| `--plain` | Disable presentation colors and animation |
+| `--no-animation` | Disable startup animation while retaining supported colors |
+| `-h`, `--help` | Display installer usage information |
+
+Without `--apply`, the installer runs in non-mutating preview mode.
+
+#### Preview examples
+
+```bash
+./install.sh
+./install.sh --plain
+./install.sh --no-animation
+./install.sh --help
+```
+
+#### Apply examples
+
+Choose the appropriate invocation below. Each command performs actual
+bootstrap operations; these are alternatives, not sequential steps.
+
+```bash
+./install.sh --apply
+./install.sh --apply --plain
+./install.sh --apply --no-animation
+./install.sh --apply --prune
+```
+
+Presentation options are repeatable and order-independent.
+They do not change host enrollment, package convergence policies,
+application selection, or infrastructure execution decisions.
+
+The optional presentation adapter and its CLI are implemented.
+Enhanced production rendering is being integrated incrementally;
+the current installer retains its original output format.
+
+See [Bootstrap presentation architecture](docs/bootstrap-ui.md)
+for implementation details and regression coverage.
+
 ### Bootstrap presentation preview
 
 The NovaLabs Bootstrap UI can be previewed independently of the
