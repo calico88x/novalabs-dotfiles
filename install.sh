@@ -472,6 +472,8 @@ esac
 bootstrap_ui_call nl_ui_stage_pass "Host policy validated."
 bootstrap_ui_call nl_ui_resolved_host_identity "$profile" "$repo_root"
 
+bootstrap_ui_call nl_ui_stage_begin "NATIVE PREREQUISITES"
+
 # Generic Linux hosts install only required toolchain prerequisites.
 # Named hosts continue using the existing Debian-family baseline.
 case "$profile" in
@@ -491,6 +493,7 @@ any)
             sudo apt-get install -y --no-install-recommends \
                 build-essential \
                 libatomic1
+            bootstrap_ui_call nl_ui_stage_pass "Toolchain prerequisites converged."
             ;;
         *)
             command -v cc >/dev/null 2>&1 ||
@@ -498,6 +501,8 @@ any)
 
             printf '==> Generic Linux: native prerequisites externally managed\n'
             printf '    Ensure libatomic.so.1 is available before installing Node.js.\n'
+            bootstrap_ui_call nl_ui_stage_pass \
+                "C compiler verified; native prerequisites externally managed."
             ;;
     esac
     ;;
@@ -521,11 +526,14 @@ any)
         sudo apt-get update
         # shellcheck disable=SC2086
         sudo apt-get install -y $native_packages
+        bootstrap_ui_call nl_ui_stage_pass "Native package baseline converged."
         ;;
 esac
 
+bootstrap_ui_call nl_ui_stage_begin "CONFIGURATION RECONCILIATION"
 printf '==> Applying ChezMoi configuration\n'
 chezmoi apply
+bootstrap_ui_call nl_ui_stage_pass "Managed configuration reconciled."
 
 printf '==> Installing pinned Mise toolchain\n'
 "$mise_bin" install

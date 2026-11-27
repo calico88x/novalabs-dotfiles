@@ -413,8 +413,9 @@ capabilities and CLI preferences. An unavailable presentation library or
 explicit rendering failure selects the original native preview.
 Apply mode now displays startup branding and tracks runtime initialization,
 ChezMoi enrollment and host policy validation, followed by optional host
-identity and palette presentation from the validated profile. Later stages retain their
-original native output. Existing infrastructure commands and native output
+identity and palette presentation from the validated profile. Native
+prerequisites and configuration reconciliation are also tracked. Stages
+06–08 retain their original native output. Existing infrastructure commands and native output
 remain unchanged; final execution summaries and lifecycle handling are
 pending.
 
@@ -425,7 +426,7 @@ for implementation details and regression coverage.
 
 The following diagram describes the current production integration after
 argument, privilege and platform guards. FreeBSD retains its separate
-stage-only exit. Apply startup and stages 01–03 are instrumented;
+stage-only exit. Apply startup and stages 01–05 are instrumented;
 later stages and final presentation lifecycle integration remain pending.
 
 ```mermaid
@@ -443,7 +444,9 @@ flowchart TD
     D -->|Apply| P["Optional apply branding and tracker"]
     P --> Q["Stages 01–03: runtime, enrollment, validation"]
     Q -->|Success| R["Optional authoritative host identity"]
-    R --> J["Existing stages 04–08"]
+    R --> S["Stages 04–05: prerequisites, configuration"]
+    S -->|Success| J["Existing stages 06–08"]
+    S -->|Failure| M
     Q -->|Failure| M
     J --> K{"Execution result"}
     K -->|Success| L["Successful completion"]
@@ -463,7 +466,7 @@ flowchart TD
     class I,L,N success
     class M failure
     class D,E,H,K decision
-    class B,C,J,O,Q process
+    class B,C,J,O,Q,S process
     class G fallback
 ```
 
