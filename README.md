@@ -70,7 +70,7 @@ NovaLabs Dotfiles separates responsibilities into four ownership categories.
 |---|---|---|
 | User configuration | ChezMoi | Bash, Git include, Starship, Fastfetch, btop theme, LazyVim, tmux, Vim, LazyGit, LazyDocker |
 | Application declarations | Application catalog | Exact version pins, Mise backend identifiers, profile eligibility |
-| Portable userland tools | Mise | Neovim, Node, Rust, Tree-sitter CLI, ripgrep, fd, fzf, Starship, LazyGit, LazyDocker |
+| Portable userland tools | Mise | Neovim, Node, Rust, Tree-sitter CLI, ripgrep, fd, fzf, Starship, LazyGit, LazyDocker, K9s, Dive, LazyJournal, Network Doctor, infrastructure TUIs |
 | System/platform components | OS or vendor | OpenSSH, Docker engine, containerd, NVIDIA platform packages |
 
 Declarative policy is separated into three catalogs:
@@ -81,6 +81,34 @@ Declarative policy is separated into three catalogs:
 
 See the [Application Catalog documentation](docs/application-catalog.md)
 for the application schema, selection rules, and validation workflow.
+
+### Infrastructure TUI applications
+
+NovaLabs provides a curated set of terminal-based infrastructure
+administration, observability, and diagnostic applications.
+
+| Application | Executable | Deployment scope |
+|---|---|---|
+| K9s | `k9s` | Any, Lovelace, Worker1 |
+| Dive | `dive` | Any, Docker, ZGX |
+| LazyJournal | `lazyjournal` | All managed Linux profiles |
+| Network Doctor | `netdoc` | All managed Linux profiles |
+| tui-cert | `tui-cert` | All managed Linux profiles |
+| tui-disk | `tui-disk` | All managed Linux profiles |
+| tui-systemd | `tui-systemd` | All managed Linux profiles |
+| tui-traffic | `tui-traffic` | All managed Linux profiles |
+| tui-cron | `tui-cron` | All managed Linux profiles |
+| tui-ssh | `tui-ssh` | All managed Linux profiles |
+
+All ten applications have passed native AMD64 and ARM64 installation
+and executable smoke tests using the pinned Mise runtime.
+
+Application installation does not grant additional system privileges
+or transfer ownership of underlying infrastructure components.
+
+See the [Infrastructure TUI documentation](docs/application-catalog.md#infrastructure-tui-applications)
+for runtime requirements, validation results, release integrity
+considerations, and ownership migration requirements.
 
 ## System map
 
@@ -174,9 +202,15 @@ On other Linux distributions, native dependencies remain externally managed. Ins
 
 The generic profile does not install the full NovaLabs infrastructure package baseline or manage system services. Automatic dependency provisioning is currently validated only on Ubuntu 24.04 AMD64.
 
-LazyDocker is included in the `any` profile through the application
-catalog. Docker engine availability remains a separate runtime
-consideration.
+LazyDocker, Dive, K9s, and the shared infrastructure TUI applications
+are included in the `any` profile through the application catalog.
+
+Docker engine availability, Kubernetes connectivity, systemd access,
+and other application runtime requirements remain separate from
+application installation.
+
+The generic profile does not automatically grant additional privileges
+or install infrastructure services to satisfy these runtime requirements.
 
 Chronytop and SSH server configuration are not managed by the
 `any` profile.
@@ -424,7 +458,12 @@ git diff --check
 git diff
 ```
 
-The validation script renders every declared host profile without installing applications or applying configuration.
+The validation script renders every declared host profile without
+installing applications or applying configuration.
+
+Independent application eligibility assertions also protect the
+intended enrollment policies for K9s, Dive, LazyDocker, and the
+shared infrastructure TUI applications.
 
 ### 4. Validate on a representative host
 

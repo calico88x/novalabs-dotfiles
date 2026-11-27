@@ -133,3 +133,61 @@ profiles = ["any", "docker", "zgx"]
 # UbuntuLab requires Docker support to be selected at enrollment.
 [apps.lazydocker.optional_profiles]
 ubuntulab = "withDocker"
+
+# Kubernetes administration
+
+[apps.k9s]
+backend = "aqua:derailed/k9s"
+version = "0.51.0"
+profiles = ["any", "lovelace", "worker1"]
+
+# Container image inspection
+
+[apps.dive]
+backend = "aqua:wagoodman/dive"
+version = "0.13.1"
+profiles = ["any", "docker", "zgx"]
+
+# Logging and network diagnostics
+
+[apps.lazyjournal]
+backend = "aqua:Lifailon/lazyjournal"
+version = "0.8.7"
+profiles = ["all-linux"]
+
+[apps.network-doctor]
+backend = "github:heymaikol/network-doctor"
+version = "2.2.2"
+profiles = ["all-linux"]
+
+# Infrastructure terminal interfaces
+
+[apps.tui-cert]
+backend = "github:tui-tools/tui-cert"
+version = "1.1.1"
+profiles = ["all-linux"]
+
+[apps.tui-disk]
+backend = "github:tui-tools/tui-disk"
+version = "1.0.3"
+profiles = ["all-linux"]
+
+[apps.tui-systemd]
+backend = "github:tui-tools/tui-systemd"
+version = "1.0.3"
+profiles = ["all-linux"]
+
+[apps.tui-traffic]
+backend = "github:tui-tools/tui-traffic"
+version = "0.1.5"
+profiles = ["all-linux"]
+
+[apps.tui-cron]
+backend = "github:tui-tools/tui-cron"
+version = "1.0.0"
+profiles = ["all-linux"]
+
+[apps.tui-ssh]
+backend = "github:tui-tools/tui-ssh"
+version = "1.0.0"
+profiles = ["all-linux"]
