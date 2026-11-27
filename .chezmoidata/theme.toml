@@ -18,6 +18,20 @@ muted = "#A0A4B8"
 cyan = "#8BE9FD"
 orange = "#FF9B3E"
 
+# NovaLabs bootstrap branding.
+# Fixed visual identity independent of the selected host profile.
+[theme.bootstrap]
+slogan = "DECLARATIVE INFRASTRUCTURE"
+
+# Ordered gradient stops sampled from the NovaLabs brand reference.
+[theme.bootstrap.brand]
+stop_1 = "#FBDD49"
+stop_2 = "#FE8103"
+stop_3 = "#FF1C6B"
+stop_4 = "#E200A2"
+stop_5 = "#9B04DB"
+stop_6 = "#6C1DC6"
+
 # Native application-wide theme preferences.
 [theme.preferences]
 network_doctor = "contrast"
