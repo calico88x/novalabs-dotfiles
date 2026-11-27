@@ -30,25 +30,37 @@ pass() { passed=$((passed + 1)); printf 'PASS: %s\n' "$*"; }
 
 reset_fixture() {
     local fixture_scope="${1:-runtime}"
+    case "$fixture_scope" in runtime|extended|applications) ;; *) fail "Unknown fixture scope" ;; esac
     rm -rf -- "$FIXTURE" "$HOME_FIX" "$BIN" "$TMP"
     mkdir -p "$FIXTURE/scripts/lib" "$FIXTURE/.chezmoidata" \
         "$FIXTURE/.chezmoiscripts" "$HOME_FIX/.local/bin" "$BIN" "$TMP"
     cp "$ROOT/scripts/lib/bootstrap-ui.sh" "$FIXTURE/scripts/lib/"
     cp "$ROOT/.chezmoidata/theme.toml" "$FIXTURE/.chezmoidata/"
-    # Cut before Stage 04 for historical tests or before Stage 06 for
-    # extended tests. Both cutoffs must be unique; never run later stages.
+    # Preserve historical cutoffs and add a Stage 08 cutoff.
+    # The application fixture redirects all managed paths before execution.
     awk -v scope="$fixture_scope" '
         /^bootstrap_ui_call nl_ui_stage_begin "NATIVE PREREQUISITES"$/ {
             if (scope == "runtime") { count++; stop=1 }
             else { print "ID=${FIXTURE_DISTRO:-ubuntu}"; starts++ }
         }
-        /^printf '\''==> Installing pinned Mise toolchain\\n'\''$/ {
+        /^bootstrap_ui_call nl_ui_stage_begin "APPLICATION CONVERGENCE"$/ {
             if (scope == "extended") { count++; stop=1 }
         }
+        /^printf '\''==> Auditing unused Mise tool versions\\n'\''$/ {
+            if (scope == "applications") { count++; stop=1 }
+        }
         !stop { print }
-        END { if (count != 1 || (scope == "extended" && starts != 1)) exit 1 }
+        END { if (count != 1 || (scope != "runtime" && starts != 1)) exit 1 }
     ' "$ROOT/install.sh" > "$FIXTURE/install.sh" || fail 'Missing unique apply cutoff'
-    if [[ "$fixture_scope" == extended ]]; then
+    if [[ "$fixture_scope" == applications ]]; then
+        # Exact, counted substitutions; no real system paths in this fixture.
+        for path in /usr/bin/chronyc /usr/local/bin/chronytop /usr/local/bin/.chronytop; do
+            [[ $(grep -Fc "$path" "$FIXTURE/install.sh") == 1 ]] || fail "Unexpected path count: $path"
+        done
+        sed -i 's@/usr/bin/chronyc@$FIXTURE/managed/chronyc@g; s@/usr/local/bin/chronytop@$FIXTURE/managed/chronytop@g; s@/usr/local/bin/\.chronytop@$FIXTURE/managed/.chronytop@g' "$FIXTURE/install.sh"
+        if grep -Eq '/usr/local/bin/|/usr/bin/chronyc' "$FIXTURE/install.sh"; then fail 'Unredirected managed path'; fi
+        printf '%s\n' "printf '%s\\n' 'REACHED_STAGE_08_BOUNDARY'" >> "$FIXTURE/install.sh"
+    elif [[ "$fixture_scope" == extended ]]; then
         printf '%s\n' "printf '%s\\n' 'REACHED_STAGE_06_BOUNDARY'" >> "$FIXTURE/install.sh"
     else
         printf '%s\n' "printf '%s\\n' 'REACHED_STAGE_04_BOUNDARY'" >> "$FIXTURE/install.sh"
@@ -78,6 +90,10 @@ if [ "$#" -eq 5 ] && [ "$1" = x ] &&
     printf '%s\n' NATIVE_APPLY_OUTPUT
     printf '%s\n' NATIVE_APPLY_DIAGNOSTIC >&2
     exit "${APPLY_STATUS:-0}"
+fi
+if [ "$#" = 1 ] && [ "$1" = install ]; then
+    printf '%s\n' mise-install >> "$TRACE"
+    exit "${MISE_INSTALL_STATUS:-0}"
 fi
 [ "$#" -eq 7 ] || exit 98
 [ "$1" = x ] && [ "$2" = aqua:twpayne/chezmoi@2.72.1 ] &&
@@ -109,7 +125,7 @@ case "$7" in
                 ;;
             '{{ with (index (index .hosts .profile) "chronytop") }}{{ . }}{{ else }}skip{{ end }}')
                 printf '%s\n' chronytop-policy >> "$TRACE"
-                printf '%s\n' skip
+                printf '%s\n' "${FIXTURE_CHRONYTOP:-skip}"
                 ;;
             *) exit 98 ;;
         esac
@@ -153,7 +169,7 @@ exit 99
 EOF
         chmod +x "$BIN/$tool"
     done
-    if [[ "$fixture_scope" == extended ]]; then
+    if [[ "$fixture_scope" != runtime ]]; then
         # Never invoke real sudo or apt-get: this shim only recognizes the
         # exact supported operations and records their arguments.
         cat > "$BIN/sudo" <<'EOF'
@@ -184,6 +200,86 @@ EOF
         chmod +x "$BIN/sudo"
         printf '%s\n' '#!/bin/sh' 'exit 98' > "$BIN/cc"
         chmod +x "$BIN/cc"
+    fi
+    if [[ "$fixture_scope" == applications ]]; then
+        mkdir -p "$FIXTURE/managed"
+        printf '%s\n' '#!/bin/sh' 'exit 0' > "$FIXTURE/managed/chronyc"
+        chmod +x "$FIXTURE/managed/chronyc"
+        cat > "$FIXTURE/release" <<'EOF'
+#!/bin/sh
+[ "$#" = 1 ] && [ "$1" = -version ] || exit 98
+printf '%s\n' chronytop-version >> "$TRACE"
+printf '%s\n' FIXTURE_CHRONYTOP_VERSION
+exit "${CHRONYTOP_VERSION_STATUS:-0}"
+EOF
+        mv "$BIN/curl" "$BIN/runtime-curl"
+        cat > "$BIN/curl" <<'EOF'
+#!/bin/sh
+set -eu
+url=https://github.com/geerlingguy/chronytop/releases/latest/download
+if [ "$#" = 2 ] && [ "$2" = https://mise.run ]; then
+    exec "$FIXTURE_BIN/runtime-curl" "$@"
+fi
+if [ "$#" = 2 ] && [ "$1" = -fsSL ] && [ "$2" = "$url/SHA256SUMS" ]; then
+    printf '%s\n' checksums >> "$TRACE"
+    [ "${CHECKSUM_STATUS:-0}" = 0 ] || exit "$CHECKSUM_STATUS"
+    if [ "${INVALID_CHECKSUM:-0}" = 1 ]; then
+        printf '%s\n' 'invalid  chronytop-linux-amd64'
+    else
+        sha=$(sha256sum "$FIXTURE/release"); sha=${sha%% *}
+        printf '%s  chronytop-linux-amd64\n' "$sha"
+    fi
+elif [ "$#" = 4 ] && [ "$1" = -fsSL ] && [ "$2" = -o ] && [ "$4" = "$url/chronytop-linux-amd64" ]; then
+    case "$3" in "$TMPDIR"/tmp.*) ;; *) exit 98 ;; esac
+    printf '%s\n' download >> "$TRACE"
+    [ "${DOWNLOAD_STATUS:-0}" = 0 ] || exit "$DOWNLOAD_STATUS"
+    cp "$FIXTURE/release" "$3"
+    if [ "${CORRUPT_DOWNLOAD:-0}" = 1 ]; then printf 'corrupt\n' >> "$3"; fi
+else
+    printf '%s\n' BLOCKED:curl >> "$TRACE"; exit 99
+fi
+EOF
+        mv "$BIN/sudo" "$BIN/apt-sudo"
+        cat > "$BIN/sudo" <<'EOF'
+#!/bin/sh
+set -eu
+case "$1" in
+    apt-get) exec "$FIXTURE_BIN/apt-sudo" "$@" ;;
+    install)
+        [ "$#" = 9 ] && [ "$2 $3 $4 $5 $6 $7" = '-o root -g root -m 0755' ] || exit 98
+        case "$8" in "$TMPDIR"/tmp.*) ;; *) exit 98 ;; esac
+        case "$9" in "$FIXTURE"/managed/.chronytop.*) ;; *) exit 98 ;; esac
+        printf '%s\n' stage-binary >> "$TRACE"
+        # Create the fixture stage even on failure to test explicit cleanup.
+        cp "$8" "$9"; chmod 755 "$9"
+        exit "${STAGE_STATUS:-0}"
+        ;;
+    mv)
+        [ "$#" = 5 ] && [ "$2 $3" = '-f --' ] && [ "$5" = "$FIXTURE/managed/chronytop" ] || exit 98
+        case "$4" in "$FIXTURE"/managed/.chronytop.*) ;; *) exit 98 ;; esac
+        printf '%s\n' replace-binary >> "$TRACE"
+        [ "${REPLACE_STATUS:-0}" = 0 ] || exit "$REPLACE_STATUS"
+        mv -- "$4" "$5"
+        ;;
+    rm)
+        [ "$#" = 4 ] && [ "$2 $3" = '-f --' ] || exit 98
+        case "$4" in "$FIXTURE"/managed/.chronytop.*) ;; *) exit 98 ;; esac
+        printf '%s\n' cleanup-stage >> "$TRACE"
+        rm -f -- "$4"
+        ;;
+    *) printf '%s\n' BLOCKED:sudo >> "$TRACE"; exit 99 ;;
+esac
+EOF
+        cat > "$BIN/stat" <<'EOF'
+#!/bin/sh
+set -eu
+[ "$#" = 3 ] && [ "$1" = -c ] && [ "$2" = '%U:%G %a' ] && [ "$3" = "$FIXTURE/managed/chronytop" ] || exit 98
+printf '%s\n' verify-metadata >> "$TRACE"
+# Ownership is simulated; permissions are measured on the actual fixture.
+mode=$(/usr/bin/stat -c %a "$3")
+printf '%s %s\n' "${FIXTURE_OWNER:-root:root}" "$mode"
+EOF
+        chmod +x "$BIN/curl" "$BIN/sudo" "$BIN/stat"
     fi
     : > "$TRACE"
 }
@@ -499,6 +595,159 @@ contains 'NATIVE_APPLY_OUTPUT'
 absent '[05/08]'
 trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y --no-install-recommends build-essential libatomic1' apply boundary
 pass 'Stage 04 presentation failure preserves native execution'
+
+# Application fixtures execute the real control flow through Stage 07.
+app_prefix() {
+    status 0
+    contains 'REACHED_STAGE_08_BOUNDARY'
+    contains '[06/08] APPLICATION CONVERGENCE'
+    contains '[OK] Declared application versions converged.'
+    contains '[07/08] CHRONYTOP POLICY'
+    absent '[08/08]'
+    absent 'BOOTSTRAP COMPLETE'
+}
+managed_run() { run_apply FIXTURE_PROFILE=proxmox FIXTURE_CHRONYTOP=managed "$@"; }
+managed_trace() {
+    trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y build-essential ca-certificates curl git gzip libatomic1 htop openssh-server procps sudo tar tmux vim' apply mise-install "$@"
+}
+no_stage_file() {
+    [[ -z "$(find "$FIXTURE/managed" -name '.chronytop.*' -print -quit)" ]] || fail 'Staged binary leaked'
+}
+chronytop_failed() {
+    status "$1"
+    absent '[OK] Chronytop installed and verified.'
+    absent '[OK] Chronytop already current and verified.'
+    absent 'REACHED_STAGE_08_BOUNDARY'
+    no_stage_file
+}
+reset_fixture applications
+run_apply
+app_prefix
+contains '[SKIP] Chronytop is not managed for this profile.'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y --no-install-recommends build-essential libatomic1' apply mise-install boundary
+pass 'Application convergence and skipped Chronytop'
+
+reset_fixture applications
+run_apply MISE_INSTALL_STATUS=61
+status 61
+absent '[OK] Declared application versions converged.'
+absent '[07/08]'
+absent 'REACHED_STAGE_08_BOUNDARY'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y --no-install-recommends build-essential libatomic1' apply mise-install
+pass 'Mise convergence failure preserves exit status'
+
+reset_fixture applications
+cp "$FIXTURE/release" "$FIXTURE/managed/chronytop"
+chmod 755 "$FIXTURE/managed/chronytop"
+managed_run
+app_prefix
+contains '[OK] Chronytop already current and verified.'
+managed_trace checksums verify-metadata chronytop-version boundary
+pass 'Current Chronytop checksum and metadata verification'
+
+reset_fixture applications
+managed_run
+app_prefix
+contains '[OK] Chronytop installed and verified.'
+cmp -s "$FIXTURE/release" "$FIXTURE/managed/chronytop" || fail 'Installed fixture mismatch'
+no_stage_file
+managed_trace checksums download stage-binary replace-binary chronytop-version boundary
+pass 'Chronytop download checksum and atomic replacement'
+
+reset_fixture applications
+cp "$FIXTURE/release" "$FIXTURE/managed/chronytop"
+chmod 700 "$FIXTURE/managed/chronytop"
+managed_run
+app_prefix
+contains '[OK] Chronytop installed and verified.'
+[[ $(stat -c %a "$FIXTURE/managed/chronytop") == 755 ]] || fail 'Incorrect fixture mode'
+managed_trace checksums verify-metadata download stage-binary replace-binary chronytop-version boundary
+pass 'Chronytop incorrect mode triggers replacement'
+
+reset_fixture applications
+managed_run CHECKSUM_STATUS=62
+chronytop_failed 1
+managed_trace checksums
+pass 'Chronytop checksum retrieval failure'
+
+reset_fixture applications
+managed_run INVALID_CHECKSUM=1
+chronytop_failed 1
+managed_trace checksums
+pass 'Chronytop malformed release checksum rejection'
+
+reset_fixture applications
+managed_run DOWNLOAD_STATUS=63
+chronytop_failed 1
+managed_trace checksums download
+pass 'Chronytop download failure cleanup'
+
+reset_fixture applications
+managed_run CORRUPT_DOWNLOAD=1
+chronytop_failed 1
+managed_trace checksums download
+pass 'Chronytop corrupt download rejected by real checksum'
+
+reset_fixture applications
+managed_run STAGE_STATUS=64
+chronytop_failed 1
+managed_trace checksums download stage-binary cleanup-stage
+pass 'Chronytop staging failure cleanup'
+
+reset_fixture applications
+managed_run REPLACE_STATUS=65
+chronytop_failed 1
+managed_trace checksums download stage-binary replace-binary cleanup-stage
+pass 'Chronytop replacement failure cleanup'
+
+reset_fixture applications
+managed_run CHRONYTOP_VERSION_STATUS=66
+chronytop_failed 66
+managed_trace checksums download stage-binary replace-binary chronytop-version
+pass 'Chronytop final version failure preserves exit status'
+
+reset_fixture applications
+run_apply FIXTURE_CHRONYTOP=managed
+chronytop_failed 1
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y --no-install-recommends build-essential libatomic1' apply mise-install
+pass 'Chronytop managed policy rejects non-Proxmox profile'
+
+reset_fixture applications
+rm "$FIXTURE/managed/chronyc"
+managed_run
+chronytop_failed 1
+managed_trace
+pass 'Chronytop requires existing Chrony executable'
+
+reset_fixture applications
+run_apply FIXTURE_CHRONYTOP=invalid
+chronytop_failed 1
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y --no-install-recommends build-essential libatomic1' apply mise-install
+pass 'Unsupported Chronytop policy retains guard'
+
+reset_fixture applications
+rm "$FIXTURE/scripts/lib/bootstrap-ui.sh"
+managed_run
+status 0
+contains 'REACHED_STAGE_08_BOUNDARY'
+absent '[07/08]'
+managed_trace checksums download stage-binary replace-binary chronytop-version boundary
+pass 'Managed Chronytop without presentation'
+
+reset_fixture applications
+sed -i 's/^nl_ui_stage_begin() {/nl_ui_saved_stage_begin() {/' "$FIXTURE/scripts/lib/bootstrap-ui.sh"
+cat >> "$FIXTURE/scripts/lib/bootstrap-ui.sh" <<'EOF'
+nl_ui_stage_begin() {
+    [ "$1" != 'CHRONYTOP POLICY' ] || return 67
+    nl_ui_saved_stage_begin "$@"
+}
+EOF
+managed_run
+status 0
+contains 'REACHED_STAGE_08_BOUNDARY'
+absent '[07/08]'
+managed_trace checksums download stage-binary replace-binary chronytop-version boundary
+pass 'Chronytop presentation failure preserves execution'
 
 printf '%s\n' '============================================================'
 printf 'PASS: All %s apply-prefix checkpoints validated\n' "$passed"

@@ -535,8 +535,12 @@ printf '==> Applying ChezMoi configuration\n'
 chezmoi apply
 bootstrap_ui_call nl_ui_stage_pass "Managed configuration reconciled."
 
+bootstrap_ui_call nl_ui_stage_begin "APPLICATION CONVERGENCE"
 printf '==> Installing pinned Mise toolchain\n'
 "$mise_bin" install
+bootstrap_ui_call nl_ui_stage_pass "Declared application versions converged."
+
+bootstrap_ui_call nl_ui_stage_begin "CHRONYTOP POLICY"
 
 # Chronytop is managed only on the Proxmox time server.
 case "$chronytop_policy" in
@@ -571,8 +575,10 @@ case "$chronytop_policy" in
            [ "$(stat -c '%U:%G %a' "$chronytop_bin")" = "root:root 755" ]
         then
             printf '==> Chronytop already current\n'
+            chronytop_result='Chronytop already current and verified.'
         else
             printf '==> Installing latest Chronytop release\n'
+            chronytop_result='Chronytop installed and verified.'
 
             chronytop_tmp="$(mktemp)"
 
@@ -602,8 +608,10 @@ case "$chronytop_policy" in
         fi
 
         "$chronytop_bin" -version
+        bootstrap_ui_call nl_ui_stage_pass "$chronytop_result"
         ;;
     skip)
+        bootstrap_ui_call nl_ui_stage_skip "Chronytop is not managed for this profile."
         ;;
     *)
         die "unsupported chronytop policy: $chronytop_policy"

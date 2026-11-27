@@ -323,7 +323,7 @@ is emitted until all stages and lifecycle handling are integrated.
 
 The original Phase 4.06 `scripts/test-bootstrap-runtime.sh` fixtures copy the
 actual installer prefix into a temporary repository, cut execution off
-before native package convergence, and uses fake Mise, ChezMoi, fetcher
+before native package convergence, and use fake Mise, ChezMoi, fetcher
 and Docker commands with an isolated HOME. The test cannot validate the
 later execution stages or a live installation. It verifies command order,
 selected failure statuses, native output, presentation failure containment
@@ -417,6 +417,48 @@ All nine additional checkpoints passed on AMD64 Ubuntu WSL:
 The combined apply-prefix suite contains 29 passing checkpoints. These
 results establish isolated acceptance through Stage 05, not live apply acceptance.
 
+### Application convergence and Chronytop integration
+
+Phase 4.09 instruments stages 06 and 07 without changing the existing
+Mise convergence or Chronytop installation commands. Managed Chronytop
+success is reported only after the final executable version check;
+current and replaced binaries have distinct success messages. The skip
+policy is recorded as an intentional skipped stage. Existing failure
+statuses, including explicit policy guards returning 1, are retained.
+
+A third apply-prefix fixture scope stops before Stage 08. It redirects
+managed paths into a temporary repository, uses synthetic release files,
+real SHA-256 checks, simulated ownership and measured file permissions,
+and constrained sudo and download shims. It never invokes real sudo or
+retrieves a live release. Existing 29 checkpoints retain their cutoffs.
+Seventeen additional checkpoints cover convergence, skipped policy,
+managed current/replaced binaries, invalid mode, retrieval and checksum
+failures, staged-file cleanup, version failure, policy guards and optional
+presentation failure. All 17 additional checkpoints passed on AMD64 Ubuntu WSL:
+
+| Checkpoint | Result |
+|---|---|
+| Application convergence and skipped Chronytop | Passed |
+| Mise convergence failure preserves exit status | Passed |
+| Current Chronytop checksum and metadata verification | Passed |
+| Chronytop download checksum and atomic replacement | Passed |
+| Chronytop incorrect mode triggers replacement | Passed |
+| Chronytop checksum retrieval failure | Passed |
+| Chronytop malformed release checksum rejection | Passed |
+| Chronytop download failure cleanup | Passed |
+| Chronytop corrupt download rejected by real checksum | Passed |
+| Chronytop staging failure cleanup | Passed |
+| Chronytop replacement failure cleanup | Passed |
+| Chronytop final version failure preserves exit status | Passed |
+| Chronytop managed policy rejects non-Proxmox profile | Passed |
+| Chronytop requires existing Chrony executable | Passed |
+| Unsupported Chronytop policy retains guard | Passed |
+| Managed Chronytop without presentation | Passed |
+| Chronytop presentation failure preserves execution | Passed |
+
+The combined apply-prefix suite contains 46 passing checkpoints. These
+results establish isolated acceptance through Stage 07, not live apply acceptance.
+
 ### Integration checkpoint
 
 Phase 4.05 validates enhanced production preview rendering and native
@@ -426,6 +468,7 @@ propagation respectively. Phase 4.06 instruments apply startup and stages
 full exit-status handling and signal cleanup remain pending. Phase 4.07 adds
 optional authoritative host identity; isolated regression acceptance is complete.
 Phase 4.08 instruments stages 04–05; extended regression acceptance is complete.
+Phase 4.09 instruments stages 06–07; regression acceptance is complete.
 No new mandatory runtime dependencies are introduced.
 
 ## Terminal compatibility
@@ -882,8 +925,8 @@ complementary regression suites.
 | Pseudo-terminal regression | 17 | Passed |
 | Production presentation adapter | 11 | Passed |
 | Production installer integration | 24 | Passed |
-| Apply-prefix integration | 29 | Passed |
-| **Total** | **117** | **Passed** |
+| Apply-prefix integration | 46 | Passed |
+| **Total** | **134** | **Passed** |
 
 Presentation regression tests validate branding, rendering,
 palette initialization, system identity, host palettes, stage
@@ -898,8 +941,8 @@ presentation calls and state preservation.
 Installer integration tests validate the actual production entry
 point in isolated, non-mutating preview scenarios.
 
-Apply-prefix tests validate stages 01–05 and optional host presentation
-using command shims and separate cutoffs before stages 04 and 06.
+Apply-prefix tests validate stages 01–07 and optional host presentation
+using command shims and separate cutoffs before stages 04, 06 and 08.
 
 ### Pseudo-terminal regression testing
 
@@ -1055,7 +1098,7 @@ bash scripts/test-bootstrap-integration.sh
 bash scripts/test-bootstrap-runtime.sh
 ```
 
-The combined native configuration checkpoint contains 117 passing
+The combined application and Chronytop checkpoint contains 134 passing
 regression checks.
 
 Python remains a development-only dependency.
@@ -1070,8 +1113,8 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Pseudo-terminal regression | 17/17 passed |
 | Presentation adapter regression | 11/11 passed |
 | Production installer integration | 24/24 passed |
-| Apply-prefix integration | 29/29 passed |
-| **Combined regression coverage** | **117/117 passed** |
+| Apply-prefix integration | 46/46 passed |
+| **Combined regression coverage** | **134/134 passed** |
 | Truecolor animation | Passed |
 | ANSI 256-color animation | Passed |
 | Static presentation | Passed |
@@ -1086,9 +1129,9 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 The current acceptance record consists of 36 shell presentation
 checkpoints, 17 pseudo-terminal checkpoints, 11 presentation
 adapter checkpoints, 24 production installer integration checkpoints
-and 29 apply-prefix integration checkpoints.
+and 46 apply-prefix integration checkpoints.
 
-All 117 checkpoints passed on the AMD64 WSL development
+All 134 checkpoints passed on the AMD64 WSL development
 environment.
 
 These results establish presentation, initialization, CLI, production
@@ -1176,7 +1219,7 @@ not simulate execution-stage timings.
 | 4.06 — Runtime and enrollment stages | Validated (isolated apply prefix) |
 | 4.07 — Authoritative host identity resolution | Validated (isolated apply prefix) |
 | 4.08 — Native prerequisites and configuration | Validated (isolated apply prefix) |
-| 4.09 — Applications and Chronytop | Pending |
+| 4.09 — Applications and Chronytop | Validated (isolated apply prefix) |
 | 4.10 — Application audit and optional pruning | Pending |
 | 4.11 — Exit-status preservation and cleanup | Pending |
 | 4.12 — Integration regression testing | Pending |
@@ -1216,6 +1259,12 @@ The native prerequisites and configuration checkpoint expands combined
 coverage to 117 passing checks on AMD64 Ubuntu WSL. Mocked native package
 policies, APT and ChezMoi failures, and presentation isolation are verified.
 Stages 06–08, full lifecycle handling and live apply acceptance remain pending.
+
+The application and Chronytop checkpoint expands combined coverage to
+134 passing checks on AMD64 Ubuntu WSL. Synthetic release verification,
+managed and skipped policies, failure cleanup and presentation isolation
+are validated. Root ownership is simulated; Stage 08, signal handling
+and live apply acceptance remain pending.
 
 The branding foundation was introduced in commit `9307275` and merged into `main` at `621e8abc3599630a00edb8a3aaf596f23a85304d`.
 
