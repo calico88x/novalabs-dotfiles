@@ -33,6 +33,8 @@ The standalone preview does not enroll hosts, install applications, reconcile co
 | `scripts/test-bootstrap-ui.sh` | Automated presentation regression tests |
 | `install.sh` | Authoritative bootstrap execution workflow |
 | `scripts/test-bootstrap-ui-pty.py` | Automated interactive terminal compatibility and animation regression tests |
+| `scripts/test-bootstrap-adapter.sh` | Presentation adapter initialization, fallback and state preservation regression tests |
+| `scripts/test-bootstrap-integration.sh` | Production installer preview and safety guard integration tests |
 
 The presentation library is sourced by its caller. It does not independently initiate bootstrap execution, change global shell options, or install signal handlers.
 
@@ -123,6 +125,135 @@ Host-specific palettes supplement these roles rather than replace them.
 | Information | • | `[INFO]` |
 
 Plain-text indicators are intended to remain readable in redirected output, CI logs, and terminals without color support.
+
+## Production presentation adapter
+
+The production installer initializes the optional presentation
+engine through a dedicated adapter.
+
+Infrastructure execution remains the responsibility of `install.sh`.
+The presentation engine reports execution state without becoming
+the authority for installation operations or their results.
+
+### Initialization sequence
+
+Presentation initialization occurs after:
+
+1. Argument parsing.
+2. Prune safety validation.
+3. Normal-user privilege validation.
+4. Supported kernel validation.
+5. Linux distribution discovery.
+
+Help, invalid arguments, privilege rejection, unsupported kernels
+and the FreeBSD stage-only workflow retain their existing early-exit
+behavior.
+
+The adapter performs the following checks before enabling presentation:
+
+- Presentation library existence and readability.
+- POSIX shell syntax validation.
+- Isolated library loading and initialization probe.
+- Required presentation function inventory validation.
+- Initialization in the calling installer shell.
+
+An unsuccessful compatibility probe leaves enhanced presentation
+unavailable.
+
+Missing or malformed theme catalog data selects the presentation
+library's plain rendering mode instead.
+
+### Adapter architecture
+
+```mermaid
+flowchart TD
+    A["Production installer"] --> B["Argument and safety guards"]
+    B --> C["Distribution discovery"]
+    C --> D["Presentation initialization"]
+    D --> E{"Library readable?"}
+    E -->|Yes| F{"Syntax valid?"}
+    E -->|No| K["Native output fallback"]
+    F -->|Yes| G["Isolated compatibility probe"]
+    F -->|No| K
+    G --> H{"Probe successful?"}
+    H -->|Yes| I["Initialize trusted library"]
+    H -->|No| K
+    I --> J{"Initialization successful?"}
+    J -->|Yes| L["Presentation available"]
+    J -->|No| K
+    L --> M["Original bootstrap workflow"]
+    K --> M
+
+    classDef brand fill:#BD93F9,stroke:#6272A4,color:#161923
+    classDef decision fill:#FF79C6,stroke:#FF79C6,color:#161923
+    classDef process fill:#282A36,stroke:#6272A4,color:#F7F7FB
+    classDef success fill:#50FA7B,stroke:#50FA7B,color:#161923
+    classDef fallback fill:#FF7F3F,stroke:#FF7F3F,color:#161923
+
+    class A,D brand
+    class E,F,H,J decision
+    class B,C,G,I,M process
+    class L success
+    class K fallback
+```
+
+### Presentation availability
+
+The adapter distinguishes between presentation availability and
+rendering capability.
+
+| State | Behavior |
+|---|---|
+| Available, colored | Enhanced color presentation is supported |
+| Available, plain | Presentation functions remain usable without ANSI colors |
+| Unavailable | Original installer output remains the fallback |
+| Disabled after failure | Subsequent guarded presentation calls are suppressed |
+
+The `bootstrap_ui_init` function establishes presentation availability.
+
+The `bootstrap_ui_call` function invokes presentation functions
+while containing explicitly returned nonzero statuses.
+
+A failed guarded presentation call disables subsequent presentation
+calls and attempts to reset terminal text attributes.
+
+Presentation calls execute in the current shell to preserve
+stateful execution tracking.
+
+Infrastructure commands must never be passed to the presentation
+adapter.
+
+### Isolation boundaries
+
+The compatibility probe is not a security sandbox.
+
+The presentation library is trusted repository-owned shell code.
+Sourcing that code in the installer process cannot provide complete
+isolation from arbitrary shell termination, global state changes,
+or other shell-level failures.
+
+Guarded function invocation also affects shell errexit semantics.
+Presentation functions must explicitly propagate failures where
+those failures need to be detected by the adapter.
+
+The adapter currently contains ordinary initialization and
+explicitly returned rendering failures.
+
+Preservation of real infrastructure exit statuses and signal
+interruption behavior requires additional lifecycle integration
+and regression testing.
+
+### Integration checkpoint
+
+At the initialization checkpoint, the production installer loads
+the optional presentation engine but does not yet invoke enhanced
+rendering functions.
+
+The existing preview output, infrastructure commands, package
+policies, enrollment workflow and application convergence behavior
+remain unchanged.
+
+No new mandatory runtime dependencies are introduced.
 
 ## Terminal compatibility
 
@@ -569,41 +700,28 @@ sh -n scripts/preview-bootstrap-ui.sh
 
 ### Regression coverage
 
-The presentation engine is validated by two complementary
-regression suites.
+The bootstrap presentation implementation is validated by four
+complementary regression suites.
 
 | Suite | Checkpoints | Result |
 |---|---:|---|
-| Branding and terminal rendering | 13 | Passed |
-| System identity and host palettes | 6 | Passed |
-| Timing and stage state management | 6 | Passed |
-| Preview scenarios and CLI validation | 6 | Passed |
-| Palette initialization safety | 5 | Passed |
-| Pseudo-terminal compatibility | 11 | Passed |
-| **Total** | **47** | **Passed** |
+| Shell presentation regression | 36 | Passed |
+| Pseudo-terminal regression | 11 | Passed |
+| Production presentation adapter | 11 | Passed |
+| Production installer integration | 10 | Passed |
+| **Total** | **68** | **Passed** |
 
-The shell regression suite contains 36 checkpoints.
+Presentation regression tests validate branding, rendering,
+palette initialization, system identity, host palettes, stage
+tracking and simulated execution summaries.
 
-The pseudo-terminal regression suite contains 11 checkpoints
-and exercises actual terminal devices with controlled geometry.
+Pseudo-terminal tests validate interactive terminal behavior.
 
-Coverage includes:
+Adapter tests validate initialization, fallback, guarded
+presentation calls and state preservation.
 
-- Shell syntax and centralized theme loading.
-- RGB validation and terminal color encoding.
-- Logo bitmap dimensions.
-- Missing palette fallback.
-- ANSI-free non-interactive output.
-- Help and invalid argument handling.
-- Architecture normalization.
-- Missing repository revision fallback.
-- Semantic status indicators.
-- Catalog validation for all nine host profiles.
-- Plain and invalid host palette handling.
-- Elapsed-time calculations.
-- Valid and invalid stage transitions.
-- Successful, failed, and incomplete execution summaries.
-- Standard, Proxmox, failed, and OPNsense preview scenarios.
+Installer integration tests validate the actual production entry
+point in isolated, non-mutating preview scenarios.
 
 ### Pseudo-terminal regression testing
 
@@ -657,14 +775,93 @@ Five additional shell regression checkpoints verify:
 Malformed catalog tests use isolated temporary fixtures and do
 not modify the authoritative theme catalog.
 
+### Presentation adapter regression testing
+
+Run the adapter regression suite from the repository root:
+
+```bash
+bash scripts/test-bootstrap-adapter.sh
+```
+
+The suite extracts the actual adapter functions from `install.sh`
+and exercises them in fresh POSIX shells against temporary
+repository fixtures.
+
+| Checkpoint | Result |
+|---|---|
+| Valid presentation library initialization | Passed |
+| Missing presentation library fallback | Passed |
+| Invalid library syntax rejection | Passed |
+| Required function inventory validation | Passed |
+| Initialization failure isolation | Passed |
+| Missing palette plain-mode fallback | Passed |
+| Malformed palette plain-mode fallback | Passed |
+| Rendering failure containment | Passed |
+| Disabled presentation call suppression | Passed |
+| Non-presentation command rejection | Passed |
+| Presentation tracker state preservation | Passed |
+
+### Production installer integration testing
+
+Run the installer integration regression suite:
+
+```bash
+bash scripts/test-bootstrap-integration.sh
+```
+
+The suite executes the actual production installer from isolated
+temporary repository fixtures.
+
+| Checkpoint | Result |
+|---|---|
+| Production preview baseline | Passed |
+| Production preview without presentation library | Passed |
+| Production preview with invalid library syntax | Passed |
+| Production preview with incomplete library | Passed |
+| Production preview after initialization failure | Passed |
+| Production preview without theme catalog | Passed |
+| Production preview with malformed theme catalog | Passed |
+| Help exits before presentation initialization | Passed |
+| Invalid argument guard precedes presentation | Passed |
+| Prune safety guard precedes presentation | Passed |
+
+At the initialization checkpoint, the suite compares complete
+preview output against the valid presentation initialization
+baseline.
+
+Expected exit statuses are verified for the preview, help,
+invalid argument and prune safety scenarios.
+
+The suite does not invoke infrastructure apply operations.
+
+### Combined regression validation
+
+Run all four regression suites from a normal-user Linux
+development environment:
+
+```bash
+bash scripts/test-bootstrap-ui.sh
+python3 scripts/test-bootstrap-ui-pty.py
+bash scripts/test-bootstrap-adapter.sh
+bash scripts/test-bootstrap-integration.sh
+```
+
+The combined initialization checkpoint contains 68 passing
+regression checks.
+
+Python remains a development-only dependency.
+
 ### Acceptance record
 
 The presentation engine has been interactively validated on an AMD64 Ubuntu WSL environment.
 
 | Validation | Result |
 |---|---|
-| Foundational regression suite | 13/13 passed |
-| Expanded regression suite | 31/31 passed |
+| Shell presentation regression | 36/36 passed |
+| Pseudo-terminal regression | 11/11 passed |
+| Presentation adapter regression | 11/11 passed |
+| Production installer integration | 10/10 passed |
+| **Combined regression coverage** | **68/68 passed** |
 | Truecolor animation | Passed |
 | ANSI 256-color animation | Passed |
 | Static presentation | Passed |
@@ -676,7 +873,16 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Profile-specific execution simulation | Passed |
 | Failed execution simulation | Passed |
 
-These results establish presentation-layer acceptance only. They do not establish production bootstrap acceptance.
+The current acceptance record consists of 36 shell presentation
+checkpoints, 11 pseudo-terminal checkpoints, 11 presentation
+adapter checkpoints and 10 production installer integration
+checkpoints.
+
+All 68 checkpoints passed on the AMD64 WSL development
+environment.
+
+These results establish presentation and initialization
+acceptance, not production apply acceptance.
 
 ## Safety boundaries
 
@@ -708,10 +914,11 @@ The `scripts/` and `docs/` directories are excluded from ChezMoi reconciliation.
 
 The following areas require additional validation or integration work:
 
-- Production installer integration.
+- Completion of production presentation lifecycle integration.
+- Enhanced production preview and apply rendering.
 - Authoritative ChezMoi host profile resolution.
 - Preservation of real command exit statuses.
-- Production presentation failure isolation.
+- Production presentation failure isolation during apply execution.
 - Signal interruption and cleanup behavior.
 - Non-UTF-8 compatibility outside branding.
 - Extremely narrow terminal layout acceptance.
@@ -733,24 +940,43 @@ Elapsed-time measurements are not monotonic.
 Preview timings represent demonstration execution, not actual
 infrastructure reconciliation performance.
 
-The current acceptance record consists of 36 shell regression
-checkpoints and 11 pseudo-terminal regression checkpoints, all
-passing on the AMD64 WSL development environment.
-
-These results establish presentation acceptance, not production
-bootstrap acceptance.
-
 ## Implementation roadmap
 
 | Phase | Status |
 |---|---|
 | 1 — Installer architecture audit | Complete |
 | 2 — Branding and animation engine | Complete |
-| 3 — Host-aware presentation | Validated |
-| 4 — Production bootstrap integration | Pending |
+| 3 — Host-aware presentation | Complete |
+| 4 — Production bootstrap integration | In progress |
 | 5 — Compatibility and regression testing | Pending |
 | 6 — Live canary acceptance | Pending |
 | 7 — Fleet rollout and final documentation | Pending |
+
+### Phase 4 implementation milestones
+
+| Milestone | Status |
+|---|---|
+| 4.01 — Integration branch and installer audit | Complete |
+| 4.02 — Presentation safety hardening | Complete |
+| 4.03 — Optional presentation initialization and fallback | Validated |
+| 4.04 — Presentation CLI arguments | Pending |
+| 4.05 — Production preview presentation | Pending |
+| 4.06 — Runtime and enrollment stages | Pending |
+| 4.07 — Authoritative host identity resolution | Pending |
+| 4.08 — Native prerequisites and configuration | Pending |
+| 4.09 — Applications and Chronytop | Pending |
+| 4.10 — Application audit and optional pruning | Pending |
+| 4.11 — Exit-status preservation and cleanup | Pending |
+| 4.12 — Integration regression testing | Pending |
+| 4.13 — Documentation and implementation acceptance | Pending |
+
+Presentation safety hardening was introduced in commit `c3a6dfa`
+and merged into `main` at
+`38cae7fcbc4f3a7c1c4d773fc88b262babfbf979`.
+
+The optional presentation initialization checkpoint has passed
+68 combined regression checks without performing infrastructure
+apply operations.
 
 The branding foundation was introduced in commit `9307275` and merged into `main` at `621e8abc3599630a00edb8a3aaf596f23a85304d`.
 
