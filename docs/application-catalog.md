@@ -764,21 +764,73 @@ Validation limitations:
 | Enrollment profile | `zgx` |
 | Optional Docker enrollment | `false` |
 | Initial preview release | `05ec568` |
+| Validated release | `b7800a7` |
 | Expected Mise applications | 25 |
-| New eligible infrastructure applications | 9 |
-| Deployment status | Pending |
+| Newly installed infrastructure applications | 9 |
+| Deployment status | Passed |
 
-The initial live dry-run confirmed application eligibility, exact
-version pins, and host-specific theme rendering.
+The initial live dry-run identified unnecessary K9s directory creation
+on a host where K9s was ineligible. Live reconciliation was paused
+before any configuration changes were applied.
 
-It also identified unnecessary K9s directory creation on a host where
-K9s is ineligible. Live reconciliation was paused before any configuration
-changes were applied.
+The application subtree exclusion correction was integrated into
+authoritative main and validated through 64 reported regression
+checkpoints, including six native filesystem scenarios.
 
-The application subtree exclusion correction passed all six native
-filesystem regression scenarios before resuming the ARM64 canary.
+The corrected release was synchronized to ZGX after confirming
+identical commit identifiers across the authoring workstation,
+authoritative Forgejo repository, and automatic GitHub mirror.
 
-Final live deployment acceptance remains pending.
+The repeated live dry-run confirmed that the complete K9s
+configuration subtree was excluded from management.
+
+Acceptance results:
+
+- Host identity, operating system, and ARM64 architecture validation passed.
+- All 25 declared applications were installed at their requested versions.
+- All 16 previously installed application version pins were preserved.
+- All nine new infrastructure applications installed successfully.
+- All nine new executables resolved to their Mise-managed installations.
+- All nine executables were native, statically linked ARM64 ELF binaries.
+- Network Doctor artifact attestation verification succeeded.
+- The pinned native package baseline was already satisfied.
+- No native OS packages were upgraded, installed, or removed.
+- The unused Mise version audit returned no entries.
+- The complete K9s configuration subtree remained absent after reconciliation.
+- The existing btop configuration was byte-for-byte unchanged.
+- All three eligible theme configuration files were deployed with
+  user ownership and `0644` permissions.
+- `TUI_THEME` activated correctly in a fresh login shell.
+- `K9S_SKIN` remained unset.
+- All eight theme-enabled applications passed visual and interactive
+  acceptance.
+- Dive successfully inspected two existing local Docker images:
+  `alpine:3.22` and `curlimages/curl:latest`.
+- No additional Docker images or containers were required for testing.
+- `chezmoi verify --exclude=scripts` passed.
+- The source repository remained clean and synchronized.
+
+The application directory eligibility finding was resolved and
+verified through actual live reconciliation on ZGX.
+
+The original Mise manifest, shell environment configuration, and
+btop configuration were preserved in a private local recovery
+directory with `0700` permissions.
+
+All three recovery artifacts passed SHA-256 verification before
+deployment and again after final acceptance.
+
+Validation limitations:
+
+- Actual recovery restoration was not tested.
+- The recovery checkpoint is a targeted configuration backup,
+  not a full system snapshot.
+- Privileged infrastructure administration features were not exercised.
+- Docker integration testing was limited to inspection of existing
+  local images using the current user's Docker permissions.
+- Native FreeBSD reconciliation remains outside the validated scope.
+- Comprehensive artifact integrity verification beyond the confirmed
+  Network Doctor attestation remains a separate improvement.
 
 ### Regression baseline
 
