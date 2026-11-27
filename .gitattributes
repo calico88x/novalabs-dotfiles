@@ -26,3 +26,6 @@ dot_config/novalab/git/config text eol=lf
 dot_vimrc text eol=lf
 dot_config/bat/config text eol=lf
 dot_config/htop/htoprc text eol=lf
+
+# Shared ChezMoi text templates, including extensionless templates.
+.chezmoitemplates/** text eol=lf
