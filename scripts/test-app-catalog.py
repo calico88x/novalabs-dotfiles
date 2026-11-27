@@ -23,6 +23,25 @@ IGNORE_TEMPLATE = ".chezmoiignore.tmpl"
 
 LAZYDOCKER = "aqua:jesseduffield/lazydocker"
 BTOP = "aqua:aristocratos/btop"
+K9S = "aqua:derailed/k9s"
+DIVE = "aqua:wagoodman/dive"
+
+# Infrastructure TUIs required on every managed Linux profile.
+COMMON_INFRASTRUCTURE_TUIS = (
+    "aqua:Lifailon/lazyjournal",
+    "github:heymaikol/network-doctor",
+    "github:tui-tools/tui-cert",
+    "github:tui-tools/tui-disk",
+    "github:tui-tools/tui-systemd",
+    "github:tui-tools/tui-traffic",
+    "github:tui-tools/tui-cron",
+    "github:tui-tools/tui-ssh",
+)
+
+# Explicit application enrollment policies.
+K9S_PROFILES = frozenset({"any", "lovelace", "worker1"})
+DIVE_PROFILES = frozenset({"any", "docker", "zgx"})
+LAZYDOCKER_PROFILES = frozenset({"any", "docker", "zgx"})
 
 
 def render(template, profile, with_docker=False):
@@ -149,6 +168,44 @@ def test_profile(catalog, hosts, profile, with_docker=False):
     # OPNsense must never receive Mise-managed applications.
     if profile == "opnsense":
         require(not actual, "OPNsense must remain unmanaged")
+
+    # Infrastructure application policies are validated independently
+    # of the catalog to detect unintended enrollment changes.
+    managed_linux = (
+        hosts[profile]["kernel"] == "linux"
+        and hosts[profile]["mutation"] == "managed"
+    )
+
+    for backend in COMMON_INFRASTRUCTURE_TUIS:
+        require(
+            (backend in actual) == managed_linux,
+            f"{label}: infrastructure TUI policy violation: {backend}",
+        )
+
+    require(
+        (K9S in actual) == (
+            managed_linux and profile in K9S_PROFILES
+        ),
+        f"{label}: K9s enrollment policy violation",
+    )
+
+    require(
+        (DIVE in actual) == (
+            managed_linux and profile in DIVE_PROFILES
+        ),
+        f"{label}: Dive enrollment policy violation",
+    )
+
+    require(
+        (LAZYDOCKER in actual) == (
+            managed_linux
+            and (
+                profile in LAZYDOCKER_PROFILES
+                or (profile == "ubuntulab" and with_docker)
+            )
+        ),
+        f"{label}: LazyDocker enrollment policy violation",
+    )
 
     # Verify LazyDocker configuration and installation agree.
     ignored = render(IGNORE_TEMPLATE, profile, with_docker)
