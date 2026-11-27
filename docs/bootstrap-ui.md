@@ -317,8 +317,8 @@ Native command output and prompts are retained. Explicit presentation
 failures disable subsequent guarded calls without changing infrastructure
 execution. Failed commands cannot reach the corresponding success call.
 The existing shell exit and temporary-file trap behavior is not changed
-in this checkpoint. Failure summaries, signal handling, authoritative host
-palette rendering and stages 04–08 remain pending. No final tracker summary
+in this checkpoint. Failure summaries, signal handling and stages 04–08
+remain pending. No final tracker summary
 is emitted until all stages and lifecycle handling are integrated.
 
 The development-only `scripts/test-bootstrap-runtime.sh` suite copies the
@@ -354,14 +354,44 @@ These results validate the mocked apply prefix only. Native enrollment
 output and diagnostics are retained; real interactive enrollment and live
 apply remain unvalidated.
 
+### Authoritative host identity integration
+
+Phase 4.07 renders host identity after Stage 03 passes. The resolved ChezMoi
+profile selects a section in the existing theme catalog; no hostname inference,
+additional enrollment or infrastructure policy changes are introduced.
+Missing display metadata omits the optional identity section. Missing or
+invalid palette shades omit both accent and palette while retaining valid
+identity metadata. An explicit renderer failure disables guarded presentation
+calls without stopping infrastructure execution. Preview remains unresolved.
+
+Eight additional isolated apply-prefix checkpoints cover authoritative profile
+selection, all nine catalog identities (including mocked OPNsense metadata,
+not real OPNsense apply), generic enrollment, missing catalog, missing host
+metadata, malformed palette, renderer failure and validation ordering.
+All eight additional checkpoints passed on AMD64 Ubuntu WSL:
+
+| Checkpoint | Result |
+|---|---|
+| Authoritative profile selection | Passed |
+| All nine catalog identities in mocked apply prefix | Passed |
+| Generic enrollment remains authoritative | Passed |
+| Missing presentation catalog preserves execution | Passed |
+| Missing host metadata preserves execution | Passed |
+| Malformed host palette omitted | Passed |
+| Host identity rendering failure preserves execution | Passed |
+| Host validation precedes identity rendering | Passed |
+
+The combined apply-prefix suite now contains 20 passing checkpoints.
+These results do not establish live enrollment or live apply acceptance.
+
 ### Integration checkpoint
 
 Phase 4.05 validates enhanced production preview rendering and native
 fallback. Phase 4.03 and 4.04 previously validated initialization and CLI
 propagation respectively. Phase 4.06 instruments apply startup and stages
 01–03; isolated regression acceptance is complete. Remaining apply-stage presentation,
-authoritative host identity, full exit-status handling and signal cleanup
-remain pending.
+full exit-status handling and signal cleanup remain pending. Phase 4.07 adds
+optional authoritative host identity; isolated regression acceptance is complete.
 No new mandatory runtime dependencies are introduced.
 
 ## Terminal compatibility
@@ -818,8 +848,8 @@ complementary regression suites.
 | Pseudo-terminal regression | 17 | Passed |
 | Production presentation adapter | 11 | Passed |
 | Production installer integration | 24 | Passed |
-| Apply runtime integration | 12 | Passed |
-| **Total** | **100** | **Passed** |
+| Apply runtime and identity integration | 20 | Passed |
+| **Total** | **108** | **Passed** |
 
 Presentation regression tests validate branding, rendering,
 palette initialization, system identity, host palettes, stage
@@ -834,8 +864,9 @@ presentation calls and state preservation.
 Installer integration tests validate the actual production entry
 point in isolated, non-mutating preview scenarios.
 
-Apply runtime tests validate the first three stages using command shims
-and a deliberate cutoff before native package convergence.
+Apply runtime and identity tests validate the first three stages and optional
+host presentation using command shims and a deliberate cutoff before native
+package convergence.
 
 ### Pseudo-terminal regression testing
 
@@ -991,7 +1022,7 @@ bash scripts/test-bootstrap-integration.sh
 bash scripts/test-bootstrap-runtime.sh
 ```
 
-The combined runtime integration checkpoint contains 100 passing
+The combined host identity checkpoint contains 108 passing
 regression checks.
 
 Python remains a development-only dependency.
@@ -1006,8 +1037,8 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Pseudo-terminal regression | 17/17 passed |
 | Presentation adapter regression | 11/11 passed |
 | Production installer integration | 24/24 passed |
-| Apply runtime integration | 12/12 passed |
-| **Combined regression coverage** | **100/100 passed** |
+| Apply runtime and identity integration | 20/20 passed |
+| **Combined regression coverage** | **108/108 passed** |
 | Truecolor animation | Passed |
 | ANSI 256-color animation | Passed |
 | Static presentation | Passed |
@@ -1022,9 +1053,9 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 The current acceptance record consists of 36 shell presentation
 checkpoints, 17 pseudo-terminal checkpoints, 11 presentation
 adapter checkpoints, 24 production installer integration checkpoints
-and 12 apply runtime integration checkpoints.
+and 20 apply runtime and identity integration checkpoints.
 
-All 100 checkpoints passed on the AMD64 WSL development
+All 108 checkpoints passed on the AMD64 WSL development
 environment.
 
 These results establish presentation, initialization, CLI, production
@@ -1063,7 +1094,7 @@ The following areas require additional validation or integration work:
 
 - Completion of production presentation lifecycle integration.
 - Enhanced production apply rendering.
-- Authoritative ChezMoi host profile resolution.
+- Live acceptance of authoritative ChezMoi host identity presentation.
 - Preservation of real command exit statuses.
 - Production presentation failure isolation during apply execution.
 - Signal interruption and cleanup behavior.
@@ -1110,7 +1141,7 @@ not simulate execution-stage timings.
 | 4.04 — Presentation CLI arguments | Validated |
 | 4.05 — Production preview presentation | Validated |
 | 4.06 — Runtime and enrollment stages | Validated (isolated apply prefix) |
-| 4.07 — Authoritative host identity resolution | Pending |
+| 4.07 — Authoritative host identity resolution | Validated (isolated apply prefix) |
 | 4.08 — Native prerequisites and configuration | Pending |
 | 4.09 — Applications and Chronytop | Pending |
 | 4.10 — Application audit and optional pruning | Pending |
@@ -1141,6 +1172,12 @@ to 100 passing checks on AMD64 Ubuntu WSL. Apply startup and stages 01–03
 are validated with isolated command fixtures, including selected failure
 statuses and explicit presentation failure containment. Stages 04–08 and
 full lifecycle handling remain pending.
+
+The authoritative host identity checkpoint expands combined coverage to
+108 passing checks on AMD64 Ubuntu WSL. Catalog selection, missing metadata,
+invalid palette omission, explicit rendering failure containment and host
+validation ordering are verified in isolated apply fixtures. Real enrollment
+and live apply acceptance remain pending.
 
 The branding foundation was introduced in commit `9307275` and merged into `main` at `621e8abc3599630a00edb8a3aaf596f23a85304d`.
 

@@ -70,6 +70,7 @@ bootstrap_ui_init() {
             nl_ui_system_identity \
             nl_ui_runtime_identity \
             nl_ui_host_identity \
+            nl_ui_resolved_host_identity \
             nl_ui_catalog_value \
             nl_ui_tracker_init \
             nl_ui_stage_begin \
@@ -469,6 +470,7 @@ case "$profile" in
 esac
 
 bootstrap_ui_call nl_ui_stage_pass "Host policy validated."
+bootstrap_ui_call nl_ui_resolved_host_identity "$profile" "$repo_root"
 
 # Generic Linux hosts install only required toolchain prerequisites.
 # Named hosts continue using the existing Debian-family baseline.
