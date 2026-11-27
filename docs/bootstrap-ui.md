@@ -489,17 +489,60 @@ The combined apply integration suite contains 54 passing checkpoints.
 These results establish full-length isolated apply acceptance, not live
 apply acceptance.
 
+### Execution lifecycle integration
+
+Phase 4.11 registers apply-only exit and HUP/INT/TERM handlers before Stage 01.
+The exit handler captures the original status before best-effort cleanup,
+attributes failures to an active tracked stage, emits one final summary and
+restores presentation attributes. If rendering is unavailable or explicitly
+fails, native diagnostics preserve the execution outcome. Successful early
+fixture exits remain incomplete, not successful eight-stage executions.
+
+Signal handlers explicitly exit with statuses 129, 130 and 143. POSIX shells
+may defer traps while a foreground child executes; no child termination or
+rollback guarantee is introduced. Cleanup removes validator and download
+files and attempts privileged removal of a remaining staged Chronytop file.
+Cleanup errors are reported without changing the original status. SIGKILL,
+power loss, and inaccessible artifacts cannot be guaranteed recoverable.
+The installed binary is not rolled back on a failed version check.
+
+Thirteen additional isolated checkpoints exercise generic and managed
+summary counts, active-stage and early failures, incomplete execution,
+summary failure fallback, missing presentation, actual HUP/INT/TERM delivery,
+interrupted staging and privileged cleanup failure. All thirteen additional
+checkpoints passed on AMD64 Ubuntu WSL:
+
+| Checkpoint | Result |
+|---|---|
+| Generic successful lifecycle accounting | Passed |
+| Managed successful lifecycle accounting | Passed |
+| Active stage failure accounting | Passed |
+| Early enrollment failure summary | Passed |
+| Intentional prefix exit remains incomplete | Passed |
+| Summary rendering failure preserves success fallback | Passed |
+| Summary rendering failure preserves failure fallback | Passed |
+| Missing presentation preserves native failure diagnostics | Passed |
+| Actual HUP interruption preserves status and stops pruning | Passed |
+| Actual INT interruption preserves status and stops pruning | Passed |
+| Actual TERM interruption preserves status and stops pruning | Passed |
+| Interrupted staging removes partial artifact | Passed |
+| Privileged cleanup failure preserves original status | Passed |
+
+The combined apply integration suite contains 67 passing checkpoints.
+Signal delivery is exercised in isolated fixtures; live apply acceptance
+remains pending.
+
 ### Integration checkpoint
 
 Phase 4.05 validates enhanced production preview rendering and native
 fallback. Phase 4.03 and 4.04 previously validated initialization and CLI
 propagation respectively. Phase 4.06 instruments apply startup and stages
-01–03; isolated regression acceptance is complete. Remaining apply-stage presentation,
-full exit-status handling and signal cleanup remain pending. Phase 4.07 adds
+01–03; isolated regression acceptance is complete. Phase 4.07 adds
 optional authoritative host identity; isolated regression acceptance is complete.
 Phase 4.08 instruments stages 04–05; extended regression acceptance is complete.
 Phase 4.09 instruments stages 06–07; regression acceptance is complete.
 Phase 4.10 instruments Stage 08; full apply fixture acceptance is complete.
+Phase 4.11 integrates unified exit handling; regression acceptance is complete.
 No new mandatory runtime dependencies are introduced.
 
 ## Terminal compatibility
@@ -956,8 +999,8 @@ complementary regression suites.
 | Pseudo-terminal regression | 17 | Passed |
 | Production presentation adapter | 11 | Passed |
 | Production installer integration | 24 | Passed |
-| Apply integration | 54 | Passed |
-| **Total** | **142** | **Passed** |
+| Apply integration | 67 | Passed |
+| **Total** | **155** | **Passed** |
 
 Presentation regression tests validate branding, rendering,
 palette initialization, system identity, host palettes, stage
@@ -974,7 +1017,8 @@ point in isolated, non-mutating preview scenarios.
 
 Apply integration tests validate all eight stages and optional host presentation
 using command shims, separate cutoffs before stages 04, 06 and 08,
-and full-length fixtures reaching the natural process exit.
+and full-length fixtures reaching the natural process exit. Lifecycle fixtures
+exercise summary accounting, signal delivery and best-effort cleanup.
 
 ### Pseudo-terminal regression testing
 
@@ -1130,7 +1174,7 @@ bash scripts/test-bootstrap-integration.sh
 bash scripts/test-bootstrap-runtime.sh
 ```
 
-The combined audit and pruning checkpoint contains 142 passing
+The combined lifecycle checkpoint contains 155 passing
 regression checks.
 
 Python remains a development-only dependency.
@@ -1145,8 +1189,8 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Pseudo-terminal regression | 17/17 passed |
 | Presentation adapter regression | 11/11 passed |
 | Production installer integration | 24/24 passed |
-| Apply integration | 54/54 passed |
-| **Combined regression coverage** | **142/142 passed** |
+| Apply integration | 67/67 passed |
+| **Combined regression coverage** | **155/155 passed** |
 | Truecolor animation | Passed |
 | ANSI 256-color animation | Passed |
 | Static presentation | Passed |
@@ -1161,9 +1205,9 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 The current acceptance record consists of 36 shell presentation
 checkpoints, 17 pseudo-terminal checkpoints, 11 presentation
 adapter checkpoints, 24 production installer integration checkpoints
-and 54 apply integration checkpoints.
+and 67 apply integration checkpoints.
 
-All 142 checkpoints passed on the AMD64 WSL development
+All 155 checkpoints passed on the AMD64 WSL development
 environment.
 
 These results establish presentation, initialization, CLI, production
@@ -1253,7 +1297,7 @@ not simulate execution-stage timings.
 | 4.08 — Native prerequisites and configuration | Validated (isolated apply prefix) |
 | 4.09 — Applications and Chronytop | Validated (isolated apply prefix) |
 | 4.10 — Application audit and optional pruning | Validated (isolated full apply) |
-| 4.11 — Exit-status preservation and cleanup | Pending |
+| 4.11 — Exit-status preservation and cleanup | Validated (isolated lifecycle) |
 | 4.12 — Integration regression testing | Pending |
 | 4.13 — Documentation and implementation acceptance | Pending |
 
@@ -1303,6 +1347,12 @@ The application audit and pruning checkpoint expands combined coverage to
 pruning authorization, failure propagation and presentation isolation are
 validated. Final lifecycle summaries, signal handling and live apply
 acceptance remain pending.
+
+The execution lifecycle checkpoint expands combined coverage to 155 passing
+checks on AMD64 Ubuntu WSL. Actual HUP, INT and TERM delivery to fixture
+installers, summary accounting, fallback and staged-artifact cleanup are
+validated. Live apply acceptance, broader terminal interruption behavior
+and integration review remain pending.
 
 The branding foundation was introduced in commit `9307275` and merged into `main` at `621e8abc3599630a00edb8a3aaf596f23a85304d`.
 

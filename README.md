@@ -417,8 +417,9 @@ identity and palette presentation from the validated profile. Native
 prerequisites, configuration reconciliation, application convergence and
 Chronytop policy and application audit with optional pruning are also tracked.
 Existing infrastructure commands and native output
-remain unchanged; final execution summaries and lifecycle handling are
-pending.
+remain unchanged except for unified exit and cleanup handling. Apply reports
+completion or failure using the original process status, with native fallback
+when presentation is unavailable. Signal cleanup is best effort.
 
 See [Bootstrap presentation architecture](docs/bootstrap-ui.md)
 for implementation details and regression coverage.
@@ -428,7 +429,7 @@ for implementation details and regression coverage.
 The following diagram describes the current production integration after
 argument, privilege and platform guards. FreeBSD retains its separate
 stage-only exit. Apply startup and all eight stages are instrumented;
-final presentation lifecycle integration remains pending.
+the unified exit handler reports the execution outcome and performs cleanup.
 
 ```mermaid
 flowchart TD
@@ -455,8 +456,9 @@ flowchart TD
     K -->|Success| L["Successful completion"]
     K -->|Failure| M["Execution failure"]
     I --> N["Exit 0"]
-    L --> O["Exit"]
-    M --> O
+    L --> U["Unified cleanup and summary"]
+    M --> U
+    U --> O["Preserved exit status"]
 
     classDef brand fill:#BD93F9,stroke:#6272A4,color:#161923
     classDef success fill:#50FA7B,stroke:#50FA7B,color:#161923
@@ -469,7 +471,7 @@ flowchart TD
     class I,L,N success
     class M failure
     class D,E,H,K decision
-    class B,C,J,O,Q,S,T process
+    class B,C,J,O,Q,S,T,U process
     class G fallback
 ```
 

@@ -102,6 +102,7 @@ fi
 if [ "$#" = 2 ] && [ "$1" = ls ] && [ "$2" = --prunable ]; then
     printf '%s\n' audit >> "$TRACE"
     printf '%s\n' NATIVE_AUDIT_OUTPUT
+    if [ -n "${AUDIT_SIGNAL:-}" ]; then kill -s "$AUDIT_SIGNAL" "$PPID"; fi
     exit "${AUDIT_STATUS:-0}"
 fi
 if [ "$#" = 1 ] && [ "$1" = prune ]; then
@@ -266,6 +267,7 @@ case "$1" in
         printf '%s\n' stage-binary >> "$TRACE"
         # Create the fixture stage even on failure to test explicit cleanup.
         cp "$8" "$9"; chmod 755 "$9"
+        if [ -n "${STAGE_SIGNAL:-}" ]; then kill -s "$STAGE_SIGNAL" "$PPID"; fi
         exit "${STAGE_STATUS:-0}"
         ;;
     mv)
@@ -279,6 +281,7 @@ case "$1" in
         [ "$#" = 4 ] && [ "$2 $3" = '-f --' ] || exit 98
         case "$4" in "$FIXTURE"/managed/.chronytop.*) ;; *) exit 98 ;; esac
         printf '%s\n' cleanup-stage >> "$TRACE"
+        [ "${CLEANUP_STATUS:-0}" = 0 ] || exit "$CLEANUP_STATUS"
         rm -f -- "$4"
         ;;
     *) printf '%s\n' BLOCKED:sudo >> "$TRACE"; exit 99 ;;
@@ -777,7 +780,6 @@ full_success() {
     contains 'NovaLabs bootstrap completed successfully.'
     contains 'NATIVE_AUDIT_OUTPUT'
     absent 'REACHED_STAGE_'
-    absent 'BOOTSTRAP COMPLETE'
     no_stage_file
 }
 reset_fixture full
@@ -854,6 +856,120 @@ absent '[08/08]'
 absent 'NovaLabs bootstrap completed successfully.'
 full_trace
 pass 'Earlier failure prevents audit and pruning'
+
+# Lifecycle assertions exercise full production exit handling.
+summary_field() {
+    grep -Eq "^  $1[[:space:]]+$2$" "$OUT" || fail "Incorrect summary field: $1 ($2)"
+}
+summary_counts() {
+    summary_field 'Stages processed' "$1"
+    summary_field Completed "$2"
+    summary_field Skipped "$3"
+    summary_field Failed "$4"
+    summary_field 'Exit status' "$5"
+}
+reset_fixture full
+run_apply
+full_success
+contains 'BOOTSTRAP COMPLETE'
+summary_counts 8/8 7 1 0 0
+[[ $(grep -Fxc 'BOOTSTRAP COMPLETE' "$OUT") == 1 ]] || fail 'Duplicate summary'
+full_trace audit
+pass 'Generic successful lifecycle accounting'
+
+reset_fixture full
+managed_run
+full_success
+contains 'BOOTSTRAP COMPLETE'
+summary_counts 8/8 8 0 0 0
+managed_trace checksums download stage-binary replace-binary chronytop-version audit
+pass 'Managed successful lifecycle accounting'
+
+reset_fixture full
+run_apply APPLY_STATUS=53
+status 53
+contains 'BOOTSTRAP FAILED'
+contains 'CONFIGURATION RECONCILIATION failed (exit status: 53)'
+summary_counts 5/8 4 0 1 53
+absent 'BOOTSTRAP COMPLETE'
+pass 'Active stage failure accounting'
+
+reset_fixture full
+run_apply ENROLL_STATUS=42
+status 42
+contains 'BOOTSTRAP FAILED'
+contains 'CHEZMOI ENROLLMENT failed (exit status: 42)'
+summary_counts 2/8 1 0 1 42
+pass 'Early enrollment failure summary'
+
+reset_fixture
+run_apply
+tracked_prefix
+contains 'BOOTSTRAP INCOMPLETE'
+summary_counts 3/8 3 0 0 0
+absent 'NovaLabs bootstrap completed successfully.'
+pass 'Intentional prefix exit remains incomplete'
+
+reset_fixture full
+cat >> "$FIXTURE/scripts/lib/bootstrap-ui.sh" <<'EOF'
+nl_ui_summary() { return 74; }
+EOF
+run_apply
+full_success
+absent 'BOOTSTRAP COMPLETE'
+full_trace audit
+pass 'Summary rendering failure preserves success fallback'
+
+reset_fixture full
+cat >> "$FIXTURE/scripts/lib/bootstrap-ui.sh" <<'EOF'
+nl_ui_summary() { return 74; }
+EOF
+run_apply AUDIT_STATUS=71
+status 71
+absent 'BOOTSTRAP COMPLETE'
+grep -Fq 'bootstrap failed (exit status: 71)' "$ERR" || fail 'Missing native failure fallback'
+full_trace audit
+pass 'Summary rendering failure preserves failure fallback'
+
+reset_fixture full
+rm "$FIXTURE/scripts/lib/bootstrap-ui.sh"
+run_apply AUDIT_STATUS=71
+status 71
+grep -Fq 'bootstrap failed (exit status: 71)' "$ERR" || fail 'Missing native failure fallback'
+full_trace audit
+pass 'Missing presentation preserves native failure diagnostics'
+
+# Deliver actual signals to the foreground installer from its audit shim.
+for signal in HUP INT TERM; do
+    reset_fixture full
+    case "$signal" in HUP) expected=129;; INT) expected=130;; TERM) expected=143;; esac
+    run_apply --prune AUDIT_SIGNAL="$signal"
+    status "$expected"
+    contains 'BOOTSTRAP FAILED'
+    summary_counts 8/8 6 1 1 "$expected"
+    grep -Fq "interrupted by $signal" "$ERR" || fail 'Missing signal diagnostic'
+    absent 'NATIVE_PRUNE_OUTPUT'
+    full_trace audit
+    pass "Actual $signal interruption preserves status and stops pruning"
+done
+
+reset_fixture full
+managed_run STAGE_SIGNAL=TERM
+status 143
+contains 'BOOTSTRAP FAILED'
+summary_counts 7/8 6 0 1 143
+no_stage_file
+managed_trace checksums download stage-binary cleanup-stage
+pass 'Interrupted staging removes partial artifact'
+
+reset_fixture full
+managed_run STAGE_STATUS=64 CLEANUP_STATUS=75
+status 1
+contains 'BOOTSTRAP FAILED'
+grep -Fq 'cleanup failed:' "$ERR" || fail 'Missing cleanup diagnostic'
+managed_trace checksums download stage-binary cleanup-stage
+[[ -n "$(find "$FIXTURE/managed" -name '.chronytop.*' -print -quit)" ]] || fail 'Cleanup failure fixture missing'
+pass 'Privileged cleanup failure preserves original status'
 
 printf '%s\n' '============================================================'
 printf 'PASS: All %s apply integration checkpoints validated\n' "$passed"
