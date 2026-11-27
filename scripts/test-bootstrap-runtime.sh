@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 4.06 apply-prefix regression. Never executes native convergence.
+# Isolated apply-prefix regression; native convergence is mocked in extended fixtures.
 set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 TEST_ROOT="$(mktemp -d)"
@@ -29,22 +29,31 @@ pass() { passed=$((passed + 1)); printf 'PASS: %s\n' "$*"; }
     fail 'Run as a normal user on Linux'
 
 reset_fixture() {
+    local fixture_scope="${1:-runtime}"
     rm -rf -- "$FIXTURE" "$HOME_FIX" "$BIN" "$TMP"
     mkdir -p "$FIXTURE/scripts/lib" "$FIXTURE/.chezmoidata" \
         "$FIXTURE/.chezmoiscripts" "$HOME_FIX/.local/bin" "$BIN" "$TMP"
     cp "$ROOT/scripts/lib/bootstrap-ui.sh" "$FIXTURE/scripts/lib/"
     cp "$ROOT/.chezmoidata/theme.toml" "$FIXTURE/.chezmoidata/"
-    # Copy the actual apply prefix, stopping BEFORE native package convergence.
-    # Fail closed if the boundary is absent or ambiguous.
-    awk '
-        /^# Generic Linux hosts install only required toolchain prerequisites\.$/ {
-            count++; stop=1
+    # Cut before Stage 04 for historical tests or before Stage 06 for
+    # extended tests. Both cutoffs must be unique; never run later stages.
+    awk -v scope="$fixture_scope" '
+        /^bootstrap_ui_call nl_ui_stage_begin "NATIVE PREREQUISITES"$/ {
+            if (scope == "runtime") { count++; stop=1 }
+            else { print "ID=${FIXTURE_DISTRO:-ubuntu}"; starts++ }
+        }
+        /^printf '\''==> Installing pinned Mise toolchain\\n'\''$/ {
+            if (scope == "extended") { count++; stop=1 }
         }
         !stop { print }
-        END { if (count != 1) exit 1 }
+        END { if (count != 1 || (scope == "extended" && starts != 1)) exit 1 }
     ' "$ROOT/install.sh" > "$FIXTURE/install.sh" || fail 'Missing unique apply cutoff'
+    if [[ "$fixture_scope" == extended ]]; then
+        printf '%s\n' "printf '%s\\n' 'REACHED_STAGE_06_BOUNDARY'" >> "$FIXTURE/install.sh"
+    else
+        printf '%s\n' "printf '%s\\n' 'REACHED_STAGE_04_BOUNDARY'" >> "$FIXTURE/install.sh"
+    fi
     cat >> "$FIXTURE/install.sh" <<'EOF'
-printf '%s\n' 'REACHED_STAGE_04_BOUNDARY'
 printf '%s\n' 'boundary' >> "$TRACE"
 exit 0
 EOF
@@ -61,6 +70,14 @@ if [ "$#" -eq 1 ] && [ "$1" = --version ]; then
     printf '%s\n' version >> "$TRACE"
     printf '%s\n' "mise ${FIXTURE_VERSION:-2026.8.9}"
     exit 0
+fi
+if [ "$#" -eq 5 ] && [ "$1" = x ] &&
+   [ "$2" = aqua:twpayne/chezmoi@2.72.1 ] && [ "$3" = -- ] &&
+   [ "$4" = chezmoi ] && [ "$5" = apply ]; then
+    printf '%s\n' apply >> "$TRACE"
+    printf '%s\n' NATIVE_APPLY_OUTPUT
+    printf '%s\n' NATIVE_APPLY_DIAGNOSTIC >&2
+    exit "${APPLY_STATUS:-0}"
 fi
 [ "$#" -eq 7 ] || exit 98
 [ "$1" = x ] && [ "$2" = aqua:twpayne/chezmoi@2.72.1 ] &&
@@ -136,6 +153,38 @@ exit 99
 EOF
         chmod +x "$BIN/$tool"
     done
+    if [[ "$fixture_scope" == extended ]]; then
+        # Never invoke real sudo or apt-get: this shim only recognizes the
+        # exact supported operations and records their arguments.
+        cat > "$BIN/sudo" <<'EOF'
+#!/bin/sh
+set -eu
+[ "$#" -ge 2 ] && [ "$1" = apt-get ] || exit 98
+shift
+case "$1" in
+    update)
+        [ "$#" -eq 1 ] || exit 98
+        printf '%s\n' apt-update >> "$TRACE"
+        printf '%s\n' NATIVE_APT_UPDATE
+        exit "${UPDATE_STATUS:-0}"
+        ;;
+    install)
+        shift
+        case "$*" in
+            '-y --no-install-recommends build-essential libatomic1'|'-y build-essential ca-certificates curl git gzip libatomic1 htop openssh-server procps sudo tar tmux vim') ;;
+            *) exit 98 ;;
+        esac
+        printf 'apt-install:%s\n' "$*" >> "$TRACE"
+        printf '%s\n' NATIVE_APT_INSTALL
+        exit "${INSTALL_APT_STATUS:-0}"
+        ;;
+    *) exit 98 ;;
+esac
+EOF
+        chmod +x "$BIN/sudo"
+        printf '%s\n' '#!/bin/sh' 'exit 98' > "$BIN/cc"
+        chmod +x "$BIN/cc"
+    fi
     : > "$TRACE"
 }
 
@@ -171,6 +220,19 @@ tracked_prefix() {
     contains '[OK] ChezMoi enrollment completed.'
     contains '[OK] Host policy validated.'
     grep -Eq '^  Mode[[:space:]]+APPLY$' "$OUT" || fail 'Apply identity missing'
+    if grep -q $'\033' "$OUT"; then fail 'ANSI in plain output'; fi
+}
+
+extended_success() {
+    status 0
+    contains 'REACHED_STAGE_06_BOUNDARY'
+    contains '[04/08] NATIVE PREREQUISITES'
+    contains '[05/08] CONFIGURATION RECONCILIATION'
+    contains '[OK] Managed configuration reconciled.'
+    contains 'NATIVE_APPLY_OUTPUT'
+    grep -Fxq 'NATIVE_APPLY_DIAGNOSTIC' "$ERR" || fail 'Native apply stderr lost'
+    absent '[06/08]'
+    absent 'BOOTSTRAP COMPLETE'
     if grep -q $'\033' "$OUT"; then fail 'ANSI in plain output'; fi
 }
 
@@ -352,6 +414,91 @@ absent 'HOST PROFILE'
 absent '[OK] Host policy validated.'
 trace_is version version enroll render-validator validate profile with-docker chronytop-policy docker-info
 pass 'Host validation precedes identity rendering'
+
+# Extended fixtures execute through Stage 05 only. The existing 20 cases
+# retain their original cutoff and traces.
+reset_fixture extended
+run_apply
+extended_success
+contains '[OK] Toolchain prerequisites converged.'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y --no-install-recommends build-essential libatomic1' apply boundary
+pass 'Generic Debian-family minimal prerequisites and configuration'
+
+reset_fixture extended
+run_apply FIXTURE_PROFILE=lovelace
+extended_success
+contains '[OK] Native package baseline converged.'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y build-essential ca-certificates curl git gzip libatomic1 htop openssh-server procps sudo tar tmux vim' apply boundary
+pass 'Named Debian-family full native baseline'
+
+reset_fixture extended
+run_apply FIXTURE_DISTRO=fedora
+extended_success
+contains '[OK] C compiler verified; native prerequisites externally managed.'
+contains 'Ensure libatomic.so.1 is available'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy apply boundary
+pass 'Generic externally managed prerequisites'
+
+reset_fixture extended
+run_apply FIXTURE_PROFILE=lovelace FIXTURE_DISTRO=fedora
+status 1
+contains '[04/08] NATIVE PREREQUISITES'
+absent '[05/08]'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy
+pass 'Named unsupported distribution guard'
+
+reset_fixture extended
+run_apply UPDATE_STATUS=51
+status 51
+absent '[OK] Toolchain prerequisites converged.'
+absent '[05/08]'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update
+pass 'APT update failure preserves exit status'
+
+reset_fixture extended
+run_apply INSTALL_APT_STATUS=52
+status 52
+absent '[OK] Toolchain prerequisites converged.'
+absent '[05/08]'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y --no-install-recommends build-essential libatomic1'
+pass 'APT install failure preserves exit status'
+
+reset_fixture extended
+run_apply APPLY_STATUS=53
+status 53
+contains '[05/08] CONFIGURATION RECONCILIATION'
+absent '[OK] Managed configuration reconciled.'
+absent 'REACHED_STAGE_06_BOUNDARY'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y --no-install-recommends build-essential libatomic1' apply
+pass 'ChezMoi apply failure preserves exit status'
+
+reset_fixture extended
+rm "$FIXTURE/scripts/lib/bootstrap-ui.sh"
+run_apply
+status 0
+contains 'REACHED_STAGE_06_BOUNDARY'
+contains 'NATIVE_APPLY_OUTPUT'
+absent '[04/08]'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y --no-install-recommends build-essential libatomic1' apply boundary
+pass 'Native and configuration execution without presentation'
+
+reset_fixture extended
+# Rename the actual function, then inject a failure only at Stage 04.
+sed -i 's/^nl_ui_stage_begin() {/nl_ui_saved_stage_begin() {/' "$FIXTURE/scripts/lib/bootstrap-ui.sh"
+grep -q '^nl_ui_saved_stage_begin() {' "$FIXTURE/scripts/lib/bootstrap-ui.sh" || fail 'Missing stage function'
+cat >> "$FIXTURE/scripts/lib/bootstrap-ui.sh" <<'EOF'
+nl_ui_stage_begin() {
+    [ "$1" != 'NATIVE PREREQUISITES' ] || return 54
+    nl_ui_saved_stage_begin "$@"
+}
+EOF
+run_apply
+status 0
+contains 'REACHED_STAGE_06_BOUNDARY'
+contains 'NATIVE_APPLY_OUTPUT'
+absent '[05/08]'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y --no-install-recommends build-essential libatomic1' apply boundary
+pass 'Stage 04 presentation failure preserves native execution'
 
 printf '%s\n' '============================================================'
 printf 'PASS: All %s apply-prefix checkpoints validated\n' "$passed"

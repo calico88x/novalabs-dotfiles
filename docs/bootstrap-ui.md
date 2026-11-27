@@ -321,8 +321,8 @@ in this checkpoint. Failure summaries, signal handling and stages 04–08
 remain pending. No final tracker summary
 is emitted until all stages and lifecycle handling are integrated.
 
-The development-only `scripts/test-bootstrap-runtime.sh` suite copies the
-actual installer prefix into a temporary repository, cuts execution off
+The original Phase 4.06 `scripts/test-bootstrap-runtime.sh` fixtures copy the
+actual installer prefix into a temporary repository, cut execution off
 before native package convergence, and uses fake Mise, ChezMoi, fetcher
 and Docker commands with an isolated HOME. The test cannot validate the
 later execution stages or a live installation. It verifies command order,
@@ -384,6 +384,39 @@ All eight additional checkpoints passed on AMD64 Ubuntu WSL:
 The combined apply-prefix suite now contains 20 passing checkpoints.
 These results do not establish live enrollment or live apply acceptance.
 
+### Native prerequisites and configuration integration
+
+Phase 4.08 instruments stages 04 and 05 around existing native commands.
+Generic Debian-family hosts report minimal toolchain convergence; named
+Debian-family hosts report full baseline convergence. Generic non-Debian
+hosts report only C compiler verification and externally managed native
+prerequisites; libatomic availability is not verified. Existing guards,
+package arguments, native output and ChezMoi apply semantics are retained.
+
+The original 20 apply-prefix checkpoints retain their Stage 04 cutoff.
+Nine extended checkpoints use a separate Stage 06 cutoff, a fixture-only
+Linux distribution override, isolated HOME, mocked sudo/APT and ChezMoi
+apply, and a fixture compiler executable. No live package or configuration
+changes occur. The sudo shim never executes a real command. Coverage includes
+minimal and full package arguments, external policy, unsupported named
+platform, APT update/install failures, apply failure and optional UI failure.
+All nine additional checkpoints passed on AMD64 Ubuntu WSL:
+
+| Checkpoint | Result |
+|---|---|
+| Generic Debian-family minimal prerequisites and configuration | Passed |
+| Named Debian-family full native baseline | Passed |
+| Generic externally managed prerequisites | Passed |
+| Named unsupported distribution guard | Passed |
+| APT update failure preserves exit status | Passed |
+| APT install failure preserves exit status | Passed |
+| ChezMoi apply failure preserves exit status | Passed |
+| Native and configuration execution without presentation | Passed |
+| Stage 04 presentation failure preserves native execution | Passed |
+
+The combined apply-prefix suite contains 29 passing checkpoints. These
+results establish isolated acceptance through Stage 05, not live apply acceptance.
+
 ### Integration checkpoint
 
 Phase 4.05 validates enhanced production preview rendering and native
@@ -392,6 +425,7 @@ propagation respectively. Phase 4.06 instruments apply startup and stages
 01–03; isolated regression acceptance is complete. Remaining apply-stage presentation,
 full exit-status handling and signal cleanup remain pending. Phase 4.07 adds
 optional authoritative host identity; isolated regression acceptance is complete.
+Phase 4.08 instruments stages 04–05; extended regression acceptance is complete.
 No new mandatory runtime dependencies are introduced.
 
 ## Terminal compatibility
@@ -848,8 +882,8 @@ complementary regression suites.
 | Pseudo-terminal regression | 17 | Passed |
 | Production presentation adapter | 11 | Passed |
 | Production installer integration | 24 | Passed |
-| Apply runtime and identity integration | 20 | Passed |
-| **Total** | **108** | **Passed** |
+| Apply-prefix integration | 29 | Passed |
+| **Total** | **117** | **Passed** |
 
 Presentation regression tests validate branding, rendering,
 palette initialization, system identity, host palettes, stage
@@ -864,9 +898,8 @@ presentation calls and state preservation.
 Installer integration tests validate the actual production entry
 point in isolated, non-mutating preview scenarios.
 
-Apply runtime and identity tests validate the first three stages and optional
-host presentation using command shims and a deliberate cutoff before native
-package convergence.
+Apply-prefix tests validate stages 01–05 and optional host presentation
+using command shims and separate cutoffs before stages 04 and 06.
 
 ### Pseudo-terminal regression testing
 
@@ -1022,7 +1055,7 @@ bash scripts/test-bootstrap-integration.sh
 bash scripts/test-bootstrap-runtime.sh
 ```
 
-The combined host identity checkpoint contains 108 passing
+The combined native configuration checkpoint contains 117 passing
 regression checks.
 
 Python remains a development-only dependency.
@@ -1037,8 +1070,8 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Pseudo-terminal regression | 17/17 passed |
 | Presentation adapter regression | 11/11 passed |
 | Production installer integration | 24/24 passed |
-| Apply runtime and identity integration | 20/20 passed |
-| **Combined regression coverage** | **108/108 passed** |
+| Apply-prefix integration | 29/29 passed |
+| **Combined regression coverage** | **117/117 passed** |
 | Truecolor animation | Passed |
 | ANSI 256-color animation | Passed |
 | Static presentation | Passed |
@@ -1053,9 +1086,9 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 The current acceptance record consists of 36 shell presentation
 checkpoints, 17 pseudo-terminal checkpoints, 11 presentation
 adapter checkpoints, 24 production installer integration checkpoints
-and 20 apply runtime and identity integration checkpoints.
+and 29 apply-prefix integration checkpoints.
 
-All 108 checkpoints passed on the AMD64 WSL development
+All 117 checkpoints passed on the AMD64 WSL development
 environment.
 
 These results establish presentation, initialization, CLI, production
@@ -1142,7 +1175,7 @@ not simulate execution-stage timings.
 | 4.05 — Production preview presentation | Validated |
 | 4.06 — Runtime and enrollment stages | Validated (isolated apply prefix) |
 | 4.07 — Authoritative host identity resolution | Validated (isolated apply prefix) |
-| 4.08 — Native prerequisites and configuration | Pending |
+| 4.08 — Native prerequisites and configuration | Validated (isolated apply prefix) |
 | 4.09 — Applications and Chronytop | Pending |
 | 4.10 — Application audit and optional pruning | Pending |
 | 4.11 — Exit-status preservation and cleanup | Pending |
@@ -1178,6 +1211,11 @@ The authoritative host identity checkpoint expands combined coverage to
 invalid palette omission, explicit rendering failure containment and host
 validation ordering are verified in isolated apply fixtures. Real enrollment
 and live apply acceptance remain pending.
+
+The native prerequisites and configuration checkpoint expands combined
+coverage to 117 passing checks on AMD64 Ubuntu WSL. Mocked native package
+policies, APT and ChezMoi failures, and presentation isolation are verified.
+Stages 06–08, full lifecycle handling and live apply acceptance remain pending.
 
 The branding foundation was introduced in commit `9307275` and merged into `main` at `621e8abc3599630a00edb8a3aaf596f23a85304d`.
 
