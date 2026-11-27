@@ -1,4 +1,3 @@
-
 #!/bin/sh
 # Preview the NovaLabs bootstrap presentation.
 # All execution stages are simulated.
