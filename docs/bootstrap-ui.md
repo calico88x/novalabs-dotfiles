@@ -1210,7 +1210,15 @@ bash scripts/test-bootstrap-runtime.sh
 ```
 
 The combined regression acceptance record contains 159 passing
-checks across five complementary suites.
+checks across five complementary suites. All five suites passed again
+after the final shell entry-point correction.
+
+The subsequent portability correction removed leading blank lines from
+the presentation library and standalone preview script, placing each
+shebang at byte zero. Commit `35a1946` was merged through PR #23 at
+`451270f`. All three production shell scripts passed Dash and BusyBox
+ash syntax validation. ShellCheck POSIX-mode review identified no errors;
+remaining warnings and informational findings were reviewed.
 
 Python remains a development-only dependency.
 
@@ -1226,6 +1234,8 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Production installer integration | 24/24 passed |
 | Apply integration and lifecycle | 71/71 passed |
 | **Combined regression coverage** | **159/159 passed** |
+| Dash syntax validation (three scripts) | Passed |
+| BusyBox ash syntax validation (three scripts) | Passed |
 | Truecolor animation | Passed |
 | ANSI 256-color animation | Passed |
 | Static presentation | Passed |
@@ -1315,8 +1325,8 @@ not simulate execution-stage timings.
 | 1 — Installer architecture audit | Complete |
 | 2 — Branding and animation engine | Complete |
 | 3 — Host-aware presentation | Complete |
-| 4 — Production bootstrap integration | Implemented; final documentation acceptance in progress |
-| 5 — Compatibility and regression testing | Pending |
+| 4 — Production bootstrap integration | Complete |
+| 5 — Compatibility and regression testing | Automated regression complete; broader platform validation outstanding |
 | 6 — Live canary acceptance | Pending |
 | 7 — Fleet rollout and final documentation | Pending |
 
@@ -1336,7 +1346,7 @@ not simulate execution-stage timings.
 | 4.10 — Application audit and optional pruning | Validated (isolated full apply) |
 | 4.11 — Exit-status preservation and cleanup | Validated (isolated lifecycle) |
 | 4.12 — Integration regression testing | Validated (isolated integration) |
-| 4.13 — Documentation and implementation acceptance | In progress |
+| 4.13 — Documentation and implementation acceptance | Complete |
 
 Presentation safety hardening was introduced in commit `c3a6dfa`
 and merged into `main` at

@@ -420,6 +420,9 @@ handling and best-effort cleanup are integrated; privileged finalization
 uses non-interactive sudo. Existing infrastructure policies and native
 command output remain unchanged.
 
+The production installer and presentation library use POSIX shell. Dash
+and BusyBox ash syntax validation are included in portability review.
+
 See [Bootstrap presentation architecture](docs/bootstrap-ui.md)
 for implementation details and regression coverage.
 
