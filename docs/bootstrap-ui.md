@@ -243,6 +243,33 @@ Preservation of real infrastructure exit statuses and signal
 interruption behavior requires additional lifecycle integration
 and regression testing.
 
+### Production presentation CLI
+
+Presentation preferences are parsed before adapter initialization.
+Execution and presentation configuration remain independent.
+
+| Argument | Configuration change |
+|---|---|
+| `--apply` | `mode=apply` |
+| `--prune` | `prune=true` |
+| `--plain` | `NL_UI_PLAIN=true`, `NL_UI_NO_ANIMATION=true` |
+| `--no-animation` | `NL_UI_NO_ANIMATION=true` |
+
+Both presentation variables default to `false`.
+Presentation arguments are repeatable and order-independent.
+Plain mode explicitly disables animation.
+
+The existing prune safety guard remains authoritative.
+Presentation arguments cannot enable infrastructure mutation
+or bypass argument validation. They remain accepted when the
+optional presentation library is unavailable.
+
+These preferences apply to NovaLabs-generated presentation,
+not colors emitted independently by native tools or subprocesses.
+
+At the CLI integration checkpoint, argument parsing and configuration
+propagation are validated. Enhanced production rendering remains pending.
+
 ### Integration checkpoint
 
 At the initialization checkpoint, the production installer loads
@@ -708,8 +735,8 @@ complementary regression suites.
 | Shell presentation regression | 36 | Passed |
 | Pseudo-terminal regression | 11 | Passed |
 | Production presentation adapter | 11 | Passed |
-| Production installer integration | 10 | Passed |
-| **Total** | **68** | **Passed** |
+| Production installer integration | 20 | Passed |
+| **Total** | **78** | **Passed** |
 
 Presentation regression tests validate branding, rendering,
 palette initialization, system identity, host palettes, stage
@@ -824,6 +851,22 @@ temporary repository fixtures.
 | Help exits before presentation initialization | Passed |
 | Invalid argument guard precedes presentation | Passed |
 | Prune safety guard precedes presentation | Passed |
+| Plain presentation argument | Passed |
+| No-animation presentation argument | Passed |
+| Presentation argument order independence | Passed |
+| Repeated presentation arguments | Passed |
+| Presentation CLI help documentation | Passed |
+| Plain presentation preserves prune safety | Passed |
+| No-animation presentation preserves prune safety | Passed |
+| Presentation CLI without optional library | Passed |
+| Presentation arguments preserve invalid option rejection | Passed |
+| Presentation CLI state propagation | Passed |
+
+CLI propagation testing instruments an isolated fixture library to
+capture the presentation configuration received during initialization.
+This verifies actual configuration state rather than argument acceptance
+alone. The production library and authoritative theme catalog remain
+unchanged during these tests.
 
 At the initialization checkpoint, the suite compares complete
 preview output against the valid presentation initialization
@@ -846,7 +889,7 @@ bash scripts/test-bootstrap-adapter.sh
 bash scripts/test-bootstrap-integration.sh
 ```
 
-The combined initialization checkpoint contains 68 passing
+The combined CLI integration checkpoint contains 78 passing
 regression checks.
 
 Python remains a development-only dependency.
@@ -860,8 +903,8 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Shell presentation regression | 36/36 passed |
 | Pseudo-terminal regression | 11/11 passed |
 | Presentation adapter regression | 11/11 passed |
-| Production installer integration | 10/10 passed |
-| **Combined regression coverage** | **68/68 passed** |
+| Production installer integration | 20/20 passed |
+| **Combined regression coverage** | **78/78 passed** |
 | Truecolor animation | Passed |
 | ANSI 256-color animation | Passed |
 | Static presentation | Passed |
@@ -875,10 +918,10 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 
 The current acceptance record consists of 36 shell presentation
 checkpoints, 11 pseudo-terminal checkpoints, 11 presentation
-adapter checkpoints and 10 production installer integration
+adapter checkpoints and 20 production installer integration
 checkpoints.
 
-All 68 checkpoints passed on the AMD64 WSL development
+All 78 checkpoints passed on the AMD64 WSL development
 environment.
 
 These results establish presentation and initialization
@@ -959,7 +1002,7 @@ infrastructure reconciliation performance.
 | 4.01 — Integration branch and installer audit | Complete |
 | 4.02 — Presentation safety hardening | Complete |
 | 4.03 — Optional presentation initialization and fallback | Validated |
-| 4.04 — Presentation CLI arguments | Pending |
+| 4.04 — Presentation CLI arguments | Validated |
 | 4.05 — Production preview presentation | Pending |
 | 4.06 — Runtime and enrollment stages | Pending |
 | 4.07 — Authoritative host identity resolution | Pending |
@@ -977,6 +1020,11 @@ and merged into `main` at
 The optional presentation initialization checkpoint has passed
 68 combined regression checks without performing infrastructure
 apply operations.
+
+The production presentation CLI checkpoint expands combined
+regression coverage to 78 passing checks, including argument
+parsing, configuration propagation, argument combinations,
+help output and preservation of existing safety guards.
 
 The branding foundation was introduced in commit `9307275` and merged into `main` at `621e8abc3599630a00edb8a3aaf596f23a85304d`.
 

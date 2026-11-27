@@ -239,6 +239,155 @@ fi
 
 pass "Prune safety guard precedes presentation"
 
+# 11. Explicit plain presentation.
+reset_fixture
+
+run_installer --plain
+require_baseline
+
+pass "Plain presentation argument"
+
+# 12. Explicit animation opt-out.
+run_installer --no-animation
+require_baseline
+
+pass "No-animation presentation argument"
+
+# 13. Combined presentation arguments.
+run_installer --plain --no-animation
+require_baseline
+
+run_installer --no-animation --plain
+require_baseline
+
+pass "Presentation argument order independence"
+
+# 14. Repeated presentation arguments.
+run_installer --plain --plain --no-animation --no-animation
+require_baseline
+
+pass "Repeated presentation arguments"
+
+# 15. Updated installer help.
+run_installer --help
+require_status 0
+
+for option in \
+    --apply \
+    --prune \
+    --plain \
+    --no-animation \
+    --help
+do
+    grep -Fq -- "$option" "$OUTPUT" ||
+        fail "Help does not document $option"
+done
+
+[[ ! -s "$ERROR" ]] ||
+    fail "Unexpected help diagnostics"
+
+pass "Presentation CLI help documentation"
+
+# 16. Plain mode does not bypass the prune safety guard.
+run_installer --plain --prune
+require_status 1
+
+grep -Fq -- "--prune requires --apply" "$ERROR" ||
+    fail "Plain mode bypassed prune safety validation"
+
+pass "Plain presentation preserves prune safety"
+
+# 17. Animation opt-out does not bypass the prune safety guard.
+run_installer --no-animation --prune
+require_status 1
+
+grep -Fq -- "--prune requires --apply" "$ERROR" ||
+    fail "No-animation mode bypassed prune safety validation"
+
+pass "No-animation presentation preserves prune safety"
+
+# 18. Presentation arguments work without the optional library.
+reset_fixture
+
+rm -- "$FIXTURE/scripts/lib/bootstrap-ui.sh"
+
+run_installer --plain
+require_baseline
+
+run_installer --no-animation
+require_baseline
+
+run_installer --plain --no-animation
+require_baseline
+
+pass "Presentation CLI without optional library"
+
+# 19. Presentation arguments do not suppress argument validation.
+reset_fixture
+
+run_installer --plain --invalid-option
+require_status 2
+
+run_installer --no-animation --invalid-option
+require_status 2
+
+pass "Presentation arguments preserve invalid option rejection"
+
+# 20. Verify actual argument propagation into the adapter.
+#
+# Instrument only the temporary fixture library. The production
+# library and authoritative theme catalog remain unchanged.
+reset_fixture
+
+cat >> "$FIXTURE/scripts/lib/bootstrap-ui.sh" <<'EOF'
+
+nl_ui_init() {
+    printf 'plain=%s\nno_animation=%s\n' \
+        "$NL_UI_PLAIN" \
+        "$NL_UI_NO_ANIMATION" \
+        > "$1/cli-state.log"
+
+    return 0
+}
+EOF
+
+require_cli_state() {
+    local expected_plain="$1"
+    local expected_no_animation="$2"
+
+    printf 'plain=%s\nno_animation=%s\n' \
+        "$expected_plain" \
+        "$expected_no_animation" \
+        > "$TEST_ROOT/expected-cli-state.log"
+
+    cmp -s \
+        "$TEST_ROOT/expected-cli-state.log" \
+        "$FIXTURE/cli-state.log" ||
+        fail "Presentation CLI state was not propagated correctly"
+}
+
+run_installer
+require_baseline
+require_cli_state false false
+
+run_installer --plain
+require_baseline
+require_cli_state true true
+
+run_installer --no-animation
+require_baseline
+require_cli_state false true
+
+run_installer --plain --no-animation
+require_baseline
+require_cli_state true true
+
+run_installer --no-animation --plain
+require_baseline
+require_cli_state true true
+
+pass "Presentation CLI state propagation"
+
 printf '%s\n' \
     "============================================================"
 
