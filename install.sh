@@ -8,6 +8,11 @@ repo_root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 mode="preview"
 prune=false
 
+# Presentation is optional and must not control bootstrap execution.
+NL_UI_PLAIN=false
+NL_UI_NO_ANIMATION=false
+bootstrap_ui_available=false
+
 usage() {
     printf 'Usage: %s [--apply] [--prune]\n' "$0"
 }
@@ -15,6 +20,96 @@ usage() {
 die() {
     printf 'novalabs-dotfiles: %s\n' "$*" >&2
     exit 1
+}
+
+# Initialize the optional bootstrap presentation library.
+#
+# Presentation failures must not prevent infrastructure execution.
+# The original installer output remains available as a fallback.
+bootstrap_ui_init() {
+    bootstrap_ui_available=false
+    bootstrap_ui_library="$repo_root/scripts/lib/bootstrap-ui.sh"
+
+    # A missing or unreadable library is not a bootstrap failure.
+    [ -f "$bootstrap_ui_library" ] &&
+        [ -r "$bootstrap_ui_library" ] ||
+        return 0
+
+    # Reject syntax errors before sourcing the library.
+    if ! sh -n "$bootstrap_ui_library" >/dev/null 2>&1; then
+        return 0
+    fi
+
+    # Probe the trusted library in a subshell before loading it
+    # into the installer. Ordinary loading and initialization
+    # failures remain isolated from the execution workflow.
+    if ! (
+        . "$bootstrap_ui_library" || exit 1
+
+        for bootstrap_ui_function in \
+            nl_ui_init \
+            nl_ui_reset \
+            nl_ui_animate_logo \
+            nl_ui_heading \
+            nl_ui_status \
+            nl_ui_system_identity \
+            nl_ui_runtime_identity \
+            nl_ui_host_identity \
+            nl_ui_catalog_value \
+            nl_ui_tracker_init \
+            nl_ui_stage_begin \
+            nl_ui_stage_pass \
+            nl_ui_stage_skip \
+            nl_ui_stage_fail \
+            nl_ui_summary
+        do
+            command -v "$bootstrap_ui_function" >/dev/null 2>&1 ||
+                exit 1
+        done
+
+        nl_ui_init "$repo_root" || exit 1
+    ) >/dev/null 2>&1
+    then
+        return 0
+    fi
+
+    # Load the validated, repository-owned presentation library.
+    # shellcheck source=scripts/lib/bootstrap-ui.sh
+    . "$bootstrap_ui_library" || return 0
+
+    if nl_ui_init "$repo_root"; then
+        bootstrap_ui_available=true
+    fi
+
+    return 0
+}
+
+# Invoke presentation functions without allowing ordinary
+# presentation errors to determine the bootstrap exit status.
+#
+# Only presentation functions may be passed to this adapter.
+# Never use it to execute infrastructure commands.
+bootstrap_ui_call() {
+    [ "$bootstrap_ui_available" = true ] ||
+        return 0
+
+    [ "$#" -gt 0 ] ||
+        return 0
+
+    case "$1" in
+        nl_ui_*)
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+
+    if ! "$@"; then
+        bootstrap_ui_available=false
+        nl_ui_reset || true
+    fi
+
+    return 0
 }
 
 while [ "$#" -gt 0 ]; do
@@ -73,6 +168,10 @@ esac
 
 # shellcheck disable=SC1091
 . /etc/os-release
+
+# Initialize optional presentation only after argument, privilege
+# and platform validation have completed.
+bootstrap_ui_init
 
 native_packages="
 build-essential
