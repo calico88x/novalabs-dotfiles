@@ -459,6 +459,36 @@ presentation failure. All 17 additional checkpoints passed on AMD64 Ubuntu WSL:
 The combined apply-prefix suite contains 46 passing checkpoints. These
 results establish isolated acceptance through Stage 07, not live apply acceptance.
 
+### Application audit and optional pruning integration
+
+Phase 4.10 instruments Stage 08 around existing Mise audit and prune
+commands. Audit always runs during apply; prune runs only with explicit
+`--prune`. A successful audit without pruning counts as a completed stage.
+Audit or prune failure prevents stage success and retains its exit status.
+The native completion message remains; final lifecycle summaries are pending.
+
+A fourth fixture scope executes the complete installer to its natural exit,
+with existing managed-path redirection and constrained infrastructure shims.
+Eight additional checkpoints cover audit-only and explicit pruning paths,
+audit and prune failures, missing presentation, Stage 08 rendering failure,
+managed Chronytop through audit and earlier failure short-circuiting.
+All eight additional checkpoints passed on AMD64 Ubuntu WSL:
+
+| Checkpoint | Result |
+|---|---|
+| Full apply audits without implicit pruning | Passed |
+| Explicit pruning follows successful audit | Passed |
+| Audit failure prevents pruning and preserves status | Passed |
+| Prune failure preserves exit status | Passed |
+| Full apply with pruning without presentation | Passed |
+| Stage 08 rendering failure preserves audit and pruning | Passed |
+| Full managed Chronytop apply reaches audit | Passed |
+| Earlier failure prevents audit and pruning | Passed |
+
+The combined apply integration suite contains 54 passing checkpoints.
+These results establish full-length isolated apply acceptance, not live
+apply acceptance.
+
 ### Integration checkpoint
 
 Phase 4.05 validates enhanced production preview rendering and native
@@ -469,6 +499,7 @@ full exit-status handling and signal cleanup remain pending. Phase 4.07 adds
 optional authoritative host identity; isolated regression acceptance is complete.
 Phase 4.08 instruments stages 04–05; extended regression acceptance is complete.
 Phase 4.09 instruments stages 06–07; regression acceptance is complete.
+Phase 4.10 instruments Stage 08; full apply fixture acceptance is complete.
 No new mandatory runtime dependencies are introduced.
 
 ## Terminal compatibility
@@ -925,8 +956,8 @@ complementary regression suites.
 | Pseudo-terminal regression | 17 | Passed |
 | Production presentation adapter | 11 | Passed |
 | Production installer integration | 24 | Passed |
-| Apply-prefix integration | 46 | Passed |
-| **Total** | **134** | **Passed** |
+| Apply integration | 54 | Passed |
+| **Total** | **142** | **Passed** |
 
 Presentation regression tests validate branding, rendering,
 palette initialization, system identity, host palettes, stage
@@ -941,8 +972,9 @@ presentation calls and state preservation.
 Installer integration tests validate the actual production entry
 point in isolated, non-mutating preview scenarios.
 
-Apply-prefix tests validate stages 01–07 and optional host presentation
-using command shims and separate cutoffs before stages 04, 06 and 08.
+Apply integration tests validate all eight stages and optional host presentation
+using command shims, separate cutoffs before stages 04, 06 and 08,
+and full-length fixtures reaching the natural process exit.
 
 ### Pseudo-terminal regression testing
 
@@ -1098,7 +1130,7 @@ bash scripts/test-bootstrap-integration.sh
 bash scripts/test-bootstrap-runtime.sh
 ```
 
-The combined application and Chronytop checkpoint contains 134 passing
+The combined audit and pruning checkpoint contains 142 passing
 regression checks.
 
 Python remains a development-only dependency.
@@ -1113,8 +1145,8 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Pseudo-terminal regression | 17/17 passed |
 | Presentation adapter regression | 11/11 passed |
 | Production installer integration | 24/24 passed |
-| Apply-prefix integration | 46/46 passed |
-| **Combined regression coverage** | **134/134 passed** |
+| Apply integration | 54/54 passed |
+| **Combined regression coverage** | **142/142 passed** |
 | Truecolor animation | Passed |
 | ANSI 256-color animation | Passed |
 | Static presentation | Passed |
@@ -1129,13 +1161,13 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 The current acceptance record consists of 36 shell presentation
 checkpoints, 17 pseudo-terminal checkpoints, 11 presentation
 adapter checkpoints, 24 production installer integration checkpoints
-and 46 apply-prefix integration checkpoints.
+and 54 apply integration checkpoints.
 
-All 134 checkpoints passed on the AMD64 WSL development
+All 142 checkpoints passed on the AMD64 WSL development
 environment.
 
 These results establish presentation, initialization, CLI, production
-preview and isolated apply-prefix acceptance, not live production apply
+preview and full-length isolated apply acceptance, not live production apply
 acceptance.
 
 ## Safety boundaries
@@ -1220,7 +1252,7 @@ not simulate execution-stage timings.
 | 4.07 — Authoritative host identity resolution | Validated (isolated apply prefix) |
 | 4.08 — Native prerequisites and configuration | Validated (isolated apply prefix) |
 | 4.09 — Applications and Chronytop | Validated (isolated apply prefix) |
-| 4.10 — Application audit and optional pruning | Pending |
+| 4.10 — Application audit and optional pruning | Validated (isolated full apply) |
 | 4.11 — Exit-status preservation and cleanup | Pending |
 | 4.12 — Integration regression testing | Pending |
 | 4.13 — Documentation and implementation acceptance | Pending |
@@ -1265,6 +1297,12 @@ The application and Chronytop checkpoint expands combined coverage to
 managed and skipped policies, failure cleanup and presentation isolation
 are validated. Root ownership is simulated; Stage 08, signal handling
 and live apply acceptance remain pending.
+
+The application audit and pruning checkpoint expands combined coverage to
+142 passing checks on AMD64 Ubuntu WSL. Full-length mocked apply, explicit
+pruning authorization, failure propagation and presentation isolation are
+validated. Final lifecycle summaries, signal handling and live apply
+acceptance remain pending.
 
 The branding foundation was introduced in commit `9307275` and merged into `main` at `621e8abc3599630a00edb8a3aaf596f23a85304d`.
 

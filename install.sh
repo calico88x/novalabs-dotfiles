@@ -618,12 +618,17 @@ case "$chronytop_policy" in
         ;;
 esac
 
+bootstrap_ui_call nl_ui_stage_begin "APPLICATION AUDIT AND PRUNING"
 printf '==> Auditing unused Mise tool versions\n'
 "$mise_bin" ls --prunable
 
 if [ "$prune" = true ]; then
     printf '==> Pruning unused Mise installations\n'
     "$mise_bin" prune
+    bootstrap_ui_call nl_ui_stage_pass "Application audit and pruning completed."
+else
+    bootstrap_ui_call nl_ui_status info "Pruning not requested."
+    bootstrap_ui_call nl_ui_stage_pass "Application audit completed."
 fi
 
 printf '%s\n' "NovaLabs bootstrap completed successfully."

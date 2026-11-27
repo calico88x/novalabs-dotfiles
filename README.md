@@ -415,7 +415,8 @@ Apply mode now displays startup branding and tracks runtime initialization,
 ChezMoi enrollment and host policy validation, followed by optional host
 identity and palette presentation from the validated profile. Native
 prerequisites, configuration reconciliation, application convergence and
-Chronytop policy are also tracked. Stage 08 retains its original native output. Existing infrastructure commands and native output
+Chronytop policy and application audit with optional pruning are also tracked.
+Existing infrastructure commands and native output
 remain unchanged; final execution summaries and lifecycle handling are
 pending.
 
@@ -426,8 +427,8 @@ for implementation details and regression coverage.
 
 The following diagram describes the current production integration after
 argument, privilege and platform guards. FreeBSD retains its separate
-stage-only exit. Apply startup and stages 01–07 are instrumented;
-later stages and final presentation lifecycle integration remain pending.
+stage-only exit. Apply startup and all eight stages are instrumented;
+final presentation lifecycle integration remains pending.
 
 ```mermaid
 flowchart TD
@@ -446,7 +447,7 @@ flowchart TD
     Q -->|Success| R["Optional authoritative host identity"]
     R --> S["Stages 04–05: prerequisites, configuration"]
     S -->|Success| T["Stages 06–07: applications, Chronytop"]
-    T -->|Success or skip| J["Existing stage 08"]
+    T -->|Success or skip| J["Stage 08: audit and optional pruning"]
     T -->|Failure| M
     S -->|Failure| M
     Q -->|Failure| M
