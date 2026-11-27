@@ -474,11 +474,38 @@ def test_profile(theme, apps, hosts, profile, with_docker=False):
         f"{label}: application theme enrollment mismatch",
     )
 
+
+    # Validate subtree exclusion policies independently of the
+    # shared application selector. Native filesystem tests verify
+    # the resulting behavior against ChezMoi itself.
+    config_directories = {
+        ".config/novalab/themes/tui-kit.toml": (
+            ".config/novalab/themes"
+        ),
+        ".config/k9s/skins/novalab.yaml": ".config/k9s",
+        ".config/lazyjournal/config.yml": ".config/lazyjournal",
+        ".config/netdoc/theme": ".config/netdoc",
+    }
+
     for path, enabled in expected.items():
-        require(
-            (path not in ignored) == enabled,
-            f"{label}: configuration eligibility mismatch: {path}",
+        directory = config_directories[path]
+
+        rules = (
+            f"{directory}/",
+            f"{directory}/**",
         )
+
+        for rule in rules:
+            require(
+                (rule not in ignored) == enabled,
+                f"{label}: directory eligibility mismatch: {rule}",
+            )
+
+        require(
+            path not in ignored,
+            f"{label}: obsolete file-level exclusion: {path}",
+        )
+
 
     count = 0
 
