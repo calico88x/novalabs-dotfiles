@@ -138,6 +138,38 @@ See [Infrastructure TUI themes](docs/application-catalog.md#infrastructure-tui-t
 for configuration paths, palette mappings, ownership boundaries,
 activation behavior, and runtime validation details.
 
+### Fleet deployment and acceptance
+
+The declarative application catalog and infrastructure TUI initiative
+has completed technical acceptance across all eight eligible Linux
+hosts.
+
+| Validation metric | Result |
+|---|---:|
+| Accepted Linux hosts | 8/8 |
+| Fleet deployment coverage | 100% |
+| Verified Mise application installations | 203 |
+| Newly enrolled infrastructure application instances | 72 |
+| Introduced infrastructure application identifiers | 10 |
+| Validated CPU architectures | AMD64 and ARM64 |
+| New post-canary deployment defects | 0 |
+
+The fleet rollout release is `ba5bde2`.
+
+All eligible hosts passed applicable configuration convergence and
+native runtime acceptance checks. Existing application version pins
+and platform ownership boundaries were preserved.
+
+The AMD64 and ARM64 canaries received expanded native application
+validation. Subsequent fleet deployments used representative smoke
+tests and service-specific operational checks.
+
+OPNsense remains outside the Linux infrastructure TUI deployment scope.
+
+See [Fleet Rollout and Acceptance](docs/fleet-rollout.md) for the
+host-by-host acceptance records, application eligibility matrix,
+recovery provisions, release baseline, and validation limitations.
+
 ## System map
 
 ```mermaid
@@ -267,11 +299,13 @@ ChezMoi's enrollment configuration is explicitly changed.
 │   └── starship/
 ├── docs/
 │   ├── application-catalog.md
+│   ├── fleet-rollout.md
 │   └── migration-ledger.md
 ├── scripts/
 │   ├── test-app-catalog.py
 │   ├── test-theme-catalog.py
-│   └── test-theme-env.sh
+│   ├── test-theme-env.sh
+│   └── test-theme-permissions.sh
 ├── private_dot_config/
 │   ├── btop/
 │   ├── mise/
@@ -279,8 +313,8 @@ ChezMoi's enrollment configuration is explicitly changed.
 │   ├── fastfetch/
 │   ├── lazygit/
 │   ├── lazydocker/
-│   ├── k9s/
-│   │   └── skins/
+│   ├── private_k9s/
+│   │   └── private_skins/
 │   ├── lazyjournal/
 │   ├── netdoc/
 │   ├── novalab/
@@ -1174,4 +1208,14 @@ The repository replaces the older `server-dotfiles` deployment model.
 
 The old repository remains useful as migration provenance and rollback/reference until OPNsense parity is decided.
 
-See [`docs/migration-ledger.md`](docs/migration-ledger.md) for migration history and ownership decisions.
+## Project documentation
+
+| Document | Purpose |
+|---|---|
+| [Application Catalog](docs/application-catalog.md) | Application declarations, profile eligibility, configuration ownership, theme integration, regression testing, and canary validation |
+| [Fleet Rollout and Acceptance](docs/fleet-rollout.md) | Fleet deployment results, host acceptance records, recovery provisions, and validation limitations |
+| [Migration Ledger](docs/migration-ledger.md) | Historical migration decisions, platform exceptions, and ownership boundaries |
+
+The application and theme catalogs remain the authoritative sources
+of deployment policy. The documentation records their intended behavior,
+validated implementation, and operational acceptance evidence.

@@ -852,6 +852,85 @@ The shared ChezMoi template directory also uses an explicit LF
 normalization policy, including extensionless templates. This policy
 was integrated independently through PR #5 (`26f96ec`).
 
+## Fleet deployment validation
+
+Following successful AMD64 and ARM64 canary acceptance, the
+declarative application catalog and infrastructure TUI configuration
+completed deployment across all eight eligible Linux hosts.
+
+The fleet rollout release was:
+
+`ba5bde2f7fdd7e01cd068014d2093dd0ba0e9893`
+
+The earlier canary acceptance baselines remain recorded in the
+preceding sections.
+
+### Fleet acceptance results
+
+| Metric | Result |
+|---|---:|
+| Eligible Linux hosts | 8 |
+| Accepted Linux hosts | 8 |
+| Fleet deployment coverage | 100% |
+| Fleet technical acceptance coverage | 100% |
+| Verified Mise application installations | 203 |
+| Newly enrolled infrastructure application instances | 72 |
+| Introduced infrastructure application identifiers | 10 |
+| Validated CPU architectures | 2 |
+| New post-canary deployment defects | 0 |
+
+All declared application versions were verified against their
+requested versions.
+
+All eight hosts passed applicable configuration convergence and
+representative native runtime acceptance checks.
+
+The remaining fleet deployments required no corrective application,
+theme, or installer patches following canary acceptance.
+
+### Operational acceptance
+
+The fleet deployment validated:
+
+- Profile-based application and configuration eligibility.
+- Preservation of existing application version pins.
+- Host-specific theme rendering and shell environment activation.
+- K9s configuration permission and subtree exclusion policies.
+- Selected live Kubernetes and Docker integration.
+- Representative production infrastructure service availability.
+- Targeted recovery artifact integrity where checkpoints were established.
+- Consistent release distribution through Forgejo and its automatic
+  GitHub mirror.
+
+Full native application acceptance was performed during canary
+validation and the expanded Lovelace deployment.
+
+Subsequent hosts used representative runtime smoke tests and
+service-specific verification appropriate to their responsibilities.
+
+### Acceptance boundaries
+
+Fleet acceptance does not imply exhaustive functional testing of
+every application on every host.
+
+Actual recovery restoration remains untested. A separate
+predeployment recovery checkpoint was not demonstrated for Worker 01.
+
+Privileged administration, comprehensive production workload health
+auditing, and native FreeBSD application reconciliation remain
+outside the validated scope.
+
+Comprehensive artifact integrity verification beyond the confirmed
+Network Doctor attestations remains a separate improvement.
+
+OPNsense remains excluded from the Linux infrastructure TUI
+deployment denominator.
+
+The consolidated host-by-host acceptance records, application
+enrollment matrix, recovery provisions, deployment metrics, and
+validation limitations are maintained in
+[Fleet Rollout and Acceptance](fleet-rollout.md).
+
 ## Application updates
 
 1. Create a feature branch.
