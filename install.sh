@@ -361,6 +361,64 @@ if [ "$mode" = "preview" ]; then
     exit 0
 fi
 
+# Apply-only lifecycle: infrastructure status is independent of presentation.
+validator=''
+chronytop_tmp=''
+chronytop_stage=''
+bootstrap_finished=false
+bootstrap_signal=''
+
+bootstrap_exit() {
+    bootstrap_result="$1"
+    # Prevent recursive exit handling and interruption of best-effort cleanup.
+    trap - 0
+    trap '' HUP INT TERM
+    for bootstrap_artifact in "$validator" "$chronytop_tmp"; do
+        if [ -n "$bootstrap_artifact" ]; then
+            rm -f -- "$bootstrap_artifact" ||
+                printf 'novalabs-dotfiles: cleanup failed: %s\n' "$bootstrap_artifact" >&2 || true
+        fi
+    done
+    if [ -n "$chronytop_stage" ] &&
+       { [ -e "$chronytop_stage" ] || [ -L "$chronytop_stage" ]; }
+    then
+        sudo rm -f -- "$chronytop_stage" ||
+            printf 'novalabs-dotfiles: cleanup failed: %s\n' "$chronytop_stage" >&2 || true
+    fi
+
+    if [ -n "$bootstrap_signal" ]; then
+        printf 'novalabs-dotfiles: interrupted by %s\n' "$bootstrap_signal" >&2 || true
+    fi
+    if [ "$bootstrap_ui_available" = true ] &&
+       [ -n "${NL_UI_STAGE_TOTAL:-}" ]; then
+        if [ "$bootstrap_result" -ne 0 ] && [ "${NL_UI_STAGE_ACTIVE:-false}" = true ]; then
+            bootstrap_ui_call nl_ui_stage_fail "$bootstrap_result" "${NL_UI_STAGE_NAME} failed"
+        fi
+        bootstrap_ui_call nl_ui_summary "$bootstrap_result"
+    else
+        bootstrap_ui_available=false
+    fi
+    if [ "$bootstrap_ui_available" != true ]; then
+        if [ "$bootstrap_result" -ne 0 ]; then
+            printf 'novalabs-dotfiles: bootstrap failed (exit status: %s)\n' "$bootstrap_result" >&2 || true
+        elif [ "$bootstrap_finished" = true ]; then
+            printf '%s\n' 'NovaLabs bootstrap completed successfully.' || true
+        else
+            printf '%s\n' 'NovaLabs bootstrap incomplete.' || true
+        fi
+    fi
+    # Reset even if an earlier guarded call disabled presentation.
+    if command -v nl_ui_reset >/dev/null 2>&1; then
+        nl_ui_reset || true
+    fi
+    exit "$bootstrap_result"
+}
+
+trap 'bootstrap_exit "$?"' 0
+trap 'bootstrap_signal=HUP; exit 129' HUP
+trap 'bootstrap_signal=INT; exit 130' INT
+trap 'bootstrap_signal=TERM; exit 143' TERM
+
 # Apply presentation is informational only. Keep infrastructure commands
 # outside guarded presentation functions to preserve shell error semantics.
 bootstrap_ui_call nl_ui_animate_logo
@@ -420,7 +478,6 @@ bootstrap_ui_call nl_ui_stage_pass "ChezMoi enrollment completed."
 bootstrap_ui_call nl_ui_stage_begin "HOST POLICY VALIDATION"
 # Render and execute the validator before any sudo/system mutation.
 validator=$(mktemp)
-trap 'rm -f "$validator" "${chronytop_tmp:-}"' EXIT HUP INT TERM
 
 chezmoi -S "$repo_root" execute-template \
     < "$repo_root/.chezmoiscripts/run_before_10-validate-host.sh.tmpl" \
@@ -596,15 +653,14 @@ case "$chronytop_policy" in
             if ! sudo install -o root -g root -m 0755 \
                 "$chronytop_tmp" "$chronytop_stage"
             then
-                sudo rm -f -- "$chronytop_stage"
                 die "Chronytop staging failed"
             fi
 
             if ! sudo mv -f -- "$chronytop_stage" "$chronytop_bin"
             then
-                sudo rm -f -- "$chronytop_stage"
                 die "Chronytop installation failed"
             fi
+            chronytop_stage=''
         fi
 
         "$chronytop_bin" -version
@@ -631,4 +687,4 @@ else
     bootstrap_ui_call nl_ui_stage_pass "Application audit completed."
 fi
 
-printf '%s\n' "NovaLabs bootstrap completed successfully."
+bootstrap_finished=true
