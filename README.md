@@ -411,8 +411,11 @@ Enhanced production preview rendering is implemented. The installer
 selects animated, static or plain presentation according to terminal
 capabilities and CLI preferences. An unavailable presentation library or
 explicit rendering failure selects the original native preview.
-Apply-mode presentation integration remains pending; the existing
-apply workflow and native output are unchanged.
+Apply mode now displays startup branding and tracks runtime initialization,
+ChezMoi enrollment and host policy validation. Later stages retain their
+original native output. Existing infrastructure commands and native output
+remain unchanged; final execution summaries and lifecycle handling are
+pending.
 
 See [Bootstrap presentation architecture](docs/bootstrap-ui.md)
 for implementation details and regression coverage.
@@ -421,8 +424,8 @@ for implementation details and regression coverage.
 
 The following diagram describes the current production integration after
 argument, privilege and platform guards. FreeBSD retains its separate
-stage-only exit. Apply-mode presentation and lifecycle integration remain
-pending.
+stage-only exit. Apply startup and stages 01–03 are instrumented;
+later stages and final presentation lifecycle integration remain pending.
 
 ```mermaid
 flowchart TD
@@ -436,7 +439,10 @@ flowchart TD
     H -->|Yes| I["Preview complete"]
     H -->|No| G
     G --> I
-    D -->|Apply| J["Existing bootstrap workflow"]
+    D -->|Apply| P["Optional apply branding and tracker"]
+    P --> Q["Stages 01–03: runtime, enrollment, validation"]
+    Q -->|Success| J["Existing stages 04–08"]
+    Q -->|Failure| M
     J --> K{"Execution result"}
     K -->|Success| L["Successful completion"]
     K -->|Failure| M["Execution failure"]
@@ -451,11 +457,11 @@ flowchart TD
     classDef process fill:#282A36,stroke:#6272A4,color:#F7F7FB
     classDef fallback fill:#FF7F3F,stroke:#FF7F3F,color:#161923
 
-    class A,F brand
+    class A,F,P brand
     class I,L,N success
     class M failure
     class D,E,H,K decision
-    class B,C,J,O process
+    class B,C,J,O,Q process
     class G fallback
 ```
 
