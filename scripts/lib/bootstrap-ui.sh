@@ -63,56 +63,6 @@ nl_ui_valid_hex() {
     esac
 }
 
-# Detect terminal capabilities without requiring external TUI utilities.
-nl_ui_detect_terminal() {
-    NL_UI_COLOR_MODE=plain
-    NL_UI_ANIMATE=false
-    NL_UI_COLUMNS=80
-
-    if [ "${NL_UI_PLAIN:-false}" = true ] ||
-       [ ! -t 1 ] ||
-       [ ! -t 2 ] ||
-       [ -n "${NO_COLOR:-}" ] ||
-       [ "${TERM:-dumb}" = dumb ] ||
-       [ -n "${CI:-}" ]
-    then
-        return 0
-    fi
-
-    case "${COLORTERM:-}" in
-        truecolor|24bit)
-            NL_UI_COLOR_MODE=truecolor
-            ;;
-        *)
-            case "${TERM:-}" in
-                *256color*)
-                    NL_UI_COLOR_MODE=256
-                    ;;
-                *)
-                    NL_UI_COLOR_MODE=ansi
-                    ;;
-            esac
-            ;;
-    esac
-
-    if command -v tput >/dev/null 2>&1; then
-        NL_UI_COLUMNS=$(tput cols 2>/dev/null) ||
-            NL_UI_COLUMNS=80
-    fi
-
-    case "$NL_UI_COLUMNS" in
-        ''|*[!0-9]*|0)
-            NL_UI_COLUMNS=80
-            ;;
-    esac
-
-    if [ "${NL_UI_NO_ANIMATION:-false}" != true ]; then
-        NL_UI_ANIMATE=true
-    fi
-
-    return 0
-}
-
 # Load the authoritative presentation palette.
 nl_ui_load_palette() {
     NL_UI_CATALOG="$1/.chezmoidata/theme.toml"
@@ -260,16 +210,169 @@ nl_ui_text() {
     nl_ui_reset
 }
 
+
+# Read live terminal geometry.
+# Prefer the terminal device rather than environment-derived dimensions.
+# Output format: columns rows.
+nl_ui_terminal_geometry() (
+    command -v stty >/dev/null 2>&1 ||
+        exit 1
+
+    nl_ui_size=$(stty size <&2 2>/dev/null) ||
+        exit 1
+
+    # The expected stty output is: rows columns.
+    set -f
+    set -- $nl_ui_size
+
+    [ "$#" -eq 2 ] ||
+        exit 1
+
+    nl_ui_rows="$1"
+    nl_ui_cols="$2"
+
+    case "$nl_ui_cols" in
+        ''|*[!0-9]*|0|0*)
+            exit 1
+            ;;
+    esac
+
+    case "$nl_ui_rows" in
+        ''|*[!0-9]*|0|0*)
+            exit 1
+            ;;
+    esac
+
+    [ "${#nl_ui_cols}" -le 5 ] ||
+        exit 1
+
+    [ "${#nl_ui_rows}" -le 5 ] ||
+        exit 1
+
+    printf '%s %s\n' "$nl_ui_cols" "$nl_ui_rows"
+)
+
+# Detect whether the active locale supports UTF-8 rendering.
+nl_ui_utf8_supported() (
+    command -v locale >/dev/null 2>&1 ||
+        exit 1
+
+    nl_ui_charmap=$(locale charmap 2>/dev/null) ||
+        exit 1
+
+    case "$nl_ui_charmap" in
+        UTF-8|UTF8|utf-8|utf8)
+            exit 0
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+)
+
+# Determine whether the known terminal geometry can accommodate
+# the full-width animated brand frame.
+nl_ui_animation_geometry_ok() {
+    [ "${NL_UI_GEOMETRY_KNOWN:-false}" = true ] &&
+        [ "${NL_UI_COLUMNS:-0}" -ge 68 ] &&
+        [ "${NL_UI_ROWS:-0}" -ge 10 ]
+}
+
+# Detect terminal capabilities without requiring external TUI utilities.
+nl_ui_detect_terminal() {
+    NL_UI_COLOR_MODE=plain
+    NL_UI_ANIMATE=false
+
+    NL_UI_COLUMNS=80
+    NL_UI_ROWS=0
+    NL_UI_GEOMETRY_KNOWN=false
+
+    if [ "${NL_UI_PLAIN:-false}" = true ] ||
+       [ ! -t 1 ] ||
+       [ ! -t 2 ] ||
+       [ -n "${NO_COLOR:-}" ] ||
+       [ "${TERM:-dumb}" = dumb ] ||
+       [ -n "${CI:-}" ]
+    then
+        return 0
+    fi
+
+    case "${COLORTERM:-}" in
+        truecolor|24bit)
+            NL_UI_COLOR_MODE=truecolor
+            ;;
+        *)
+            case "${TERM:-}" in
+                *256color*)
+                    NL_UI_COLOR_MODE=256
+                    ;;
+                xterm*|screen*|tmux*|linux|vt100|vt220|ansi|rxvt*)
+                    NL_UI_COLOR_MODE=ansi
+                    ;;
+                *)
+                    return 0
+                    ;;
+            esac
+            ;;
+    esac
+
+    if nl_ui_geometry=$(nl_ui_terminal_geometry); then
+        NL_UI_COLUMNS=${nl_ui_geometry%% *}
+        NL_UI_ROWS=${nl_ui_geometry#* }
+        NL_UI_GEOMETRY_KNOWN=true
+    fi
+
+    if [ "${NL_UI_NO_ANIMATION:-false}" != true ] &&
+       nl_ui_animation_geometry_ok
+    then
+        case "$NL_UI_COLOR_MODE" in
+            truecolor|256)
+                NL_UI_ANIMATE=true
+                ;;
+        esac
+    fi
+
+    return 0
+}
+
+
+
+# Establish deterministic presentation defaults.
+# Never retain partially loaded or previously initialized palette data.
+nl_ui_palette_defaults() {
+    NL_UI_PALETTE_READY=false
+
+    NL_UI_BRAND_1=""
+    NL_UI_BRAND_2=""
+    NL_UI_BRAND_3=""
+    NL_UI_BRAND_4=""
+    NL_UI_BRAND_5=""
+    NL_UI_BRAND_6=""
+
+    NL_UI_HEADER=""
+    NL_UI_HIGHLIGHT=""
+    NL_UI_SUCCESS=""
+    NL_UI_ERROR=""
+    NL_UI_WARNING=""
+    NL_UI_FOREGROUND=""
+    NL_UI_MUTED=""
+
+    NL_UI_SLOGAN="DECLARATIVE INFRASTRUCTURE"
+
+    return 0
+}
+
 # Initialize presentation state.
 # Missing or invalid theme data must never block the bootstrap.
 nl_ui_init() {
-    NL_UI_PALETTE_READY=false
-
+    nl_ui_palette_defaults
     nl_ui_detect_terminal
 
     if nl_ui_load_palette "$1"; then
         NL_UI_PALETTE_READY=true
     else
+        nl_ui_palette_defaults
+
         NL_UI_COLOR_MODE=plain
         NL_UI_ANIMATE=false
     fi
@@ -451,24 +554,13 @@ nl_ui_gradient() {
     '
 }
 
-# Render the static NovaLabs logo and slogan.
-nl_ui_logo() (
-    if [ "${NL_UI_PALETTE_READY:-false}" != true ] ||
-       [ "${NL_UI_COLOR_MODE:-plain}" = plain ]
-    then
-        printf '\nNovaLabs\n%s\n\n' \
-            "${NL_UI_SLOGAN:-DECLARATIVE INFRASTRUCTURE}"
-        exit 0
-    fi
+# Prepare the wide brand bitmap and spaced slogan.
+# Call once before rendering one or more wide frames.
+nl_ui_prepare_brand() {
+    NL_UI_FRAME_BITMAP=$(nl_ui_bitmap NOVALABS) ||
+        return 1
 
-    printf '\n'
-
-    if [ "$NL_UI_COLUMNS" -ge 68 ]; then
-        nl_ui_bitmap NOVALABS |
-            nl_ui_gradient bitmap "${1:--1}"
-
-        printf '\n'
-
+    NL_UI_FRAME_SLOGAN=$(
         printf '%s\n' "$NL_UI_SLOGAN" |
             awk '{
                 for (i = 1; i <= length($0); i++)
@@ -476,8 +568,84 @@ nl_ui_logo() (
                         (i == length($0) ? "" : " ")
 
                 printf "\n"
-            }' |
-            nl_ui_gradient text "${1:--1}"
+            }'
+    ) || return 1
+
+    return 0
+}
+
+# Render the shared seven-line wide brand frame.
+# Requires prepared bitmap and slogan data.
+nl_ui_brand_frame() {
+    printf '%s\n' "$NL_UI_FRAME_BITMAP" |
+        nl_ui_gradient bitmap "${1:--1}" ||
+        return 1
+
+    printf '\n'
+
+    printf '%s\n' "$NL_UI_FRAME_SLOGAN" |
+        nl_ui_gradient text "${1:--1}"
+}
+
+# Render a slogan that wraps at the configured terminal width.
+nl_ui_render_slogan() {
+    printf '%s\n' "$NL_UI_SLOGAN" |
+        awk -v width="${NL_UI_COLUMNS:-80}" '
+            {
+                line = ""
+
+                for (i = 1; i <= NF; i++) {
+                    word = $i
+
+                    if (length(line) &&
+                        length(line) + length(word) + 1 > width) {
+                        print line
+                        line = ""
+                    }
+
+                    while (length(word) > width) {
+                        print substr(word, 1, width)
+                        word = substr(word, width + 1)
+                    }
+
+                    if (length(word))
+                        line = length(line) ? line " " word : word
+                }
+
+                if (length(line))
+                    print line
+            }
+        '
+}
+
+# Render static NovaLabs branding.
+nl_ui_logo() (
+    printf '\n'
+
+    if [ "${NL_UI_PALETTE_READY:-false}" != true ] ||
+       [ "${NL_UI_COLOR_MODE:-plain}" = plain ]
+    then
+        printf 'NovaLabs\n'
+        nl_ui_render_slogan
+        printf '\n'
+        exit 0
+    fi
+
+    if ! nl_ui_utf8_supported; then
+        printf 'NovaLabs\n'
+        nl_ui_render_slogan
+        printf '\n'
+        exit 0
+    fi
+
+    if [ "$NL_UI_COLUMNS" -ge 68 ] &&
+       [ "$((${#NL_UI_SLOGAN} * 2 - 1))" -lt "$NL_UI_COLUMNS" ]
+    then
+        nl_ui_prepare_brand ||
+            exit 1
+
+        nl_ui_brand_frame "${1:--1}" ||
+            exit 1
 
     elif [ "$NL_UI_COLUMNS" -ge 36 ]; then
         nl_ui_bitmap NOVA |
@@ -490,55 +658,30 @@ nl_ui_logo() (
 
         printf '\n'
 
-        printf '%s\n' "$NL_UI_SLOGAN" |
+        nl_ui_render_slogan |
             nl_ui_gradient text "${1:--1}"
 
     else
         printf '%s\n' NOVALABS |
             nl_ui_gradient text "${1:--1}"
 
-        printf '%s\n' DECLARATIVE INFRASTRUCTURE |
+        nl_ui_render_slogan |
             nl_ui_gradient text "${1:--1}"
     fi
 
     printf '\n'
 )
 
-
-# Render the full-width logo without leading or trailing blank lines.
-# Used by the animation engine to maintain a fixed frame height.
-nl_ui_brand_frame() {
-    nl_ui_bitmap NOVALABS |
-        nl_ui_gradient bitmap "${1:--1}"
-
-    printf '\n'
-
-    printf '%s\n' "$NL_UI_SLOGAN" |
-        awk '{
-            for (i = 1; i <= length($0); i++)
-                printf "%s%s", substr($0,i,1),
-                    (i == length($0) ? "" : " ")
-
-            printf "\n"
-        }' |
-        nl_ui_gradient text "${1:--1}"
-}
-
-# Render the animated NovaLabs startup sequence.
-#
-# The animation:
-#   - Uses a fixed seven-row display region.
-#   - Leaves the terminal scrollback intact.
-#   - Does not hide the cursor or change terminal modes.
-#   - Does not register traps or launch background processes.
-#   - Falls back to static branding when animation is unsuitable.
+# Render animated branding without modifying terminal modes.
+# Prepare all frames before drawing the first animation frame.
 nl_ui_animate_logo() (
     if [ "${NL_UI_PALETTE_READY:-false}" != true ] ||
        [ "${NL_UI_ANIMATE:-false}" != true ] ||
-       [ "${NL_UI_COLUMNS:-80}" -lt 68 ]
+       ! nl_ui_animation_geometry_ok ||
+       ! nl_ui_utf8_supported
     then
         nl_ui_logo
-        exit 0
+        exit $?
     fi
 
     case "${NL_UI_COLOR_MODE:-plain}" in
@@ -546,67 +689,79 @@ nl_ui_animate_logo() (
             ;;
         *)
             nl_ui_logo
-            exit 0
+            exit $?
             ;;
     esac
 
-    # Fractional sleep is optional for the presentation layer.
-    if ! sleep 0.01 2>/dev/null; then
+    if [ "$((${#NL_UI_SLOGAN} * 2 - 1))" -ge "$NL_UI_COLUMNS" ]; then
         nl_ui_logo
-        exit 0
+        exit $?
     fi
 
-    # Construct the bitmap only once for the complete animation.
-    nl_ui_logo_bitmap=$(nl_ui_bitmap NOVALABS) ||
+    if ! sleep 0.01 2>/dev/null; then
+        nl_ui_logo
+        exit $?
+    fi
+
+    nl_ui_prepare_brand ||
         exit 1
 
-    nl_ui_logo_slogan=$(
-        printf '%s\n' "$NL_UI_SLOGAN" |
-            awk '{
-                for (i = 1; i <= length($0); i++)
-                    printf "%s%s", substr($0,i,1),
-                        (i == length($0) ? "" : " ")
+    nl_ui_static_frame=$(nl_ui_brand_frame -1) ||
+        exit 1
 
-                printf "\n"
-            }'
-    )
-
-    nl_ui_animation_frame() {
-        printf '%s\n' "$nl_ui_logo_bitmap" |
-            nl_ui_gradient bitmap "$1"
-
-        printf '\n'
-
-        printf '%s\n' "$nl_ui_logo_slogan" |
-            nl_ui_gradient text "$1"
-    }
-
-    printf '\n'
-
-    # Display the initial, unmodified gradient.
-    nl_ui_animation_frame -1
-
-    # Move the illumination band across the existing logo.
+    # Store rendered frames in memory, separated by an ASCII
+    # record separator that cannot occur in validated frame data.
+    nl_ui_frame_delimiter=$(printf '\036')
+    nl_ui_frames=""
     nl_ui_position=0
 
     while [ "$nl_ui_position" -le 100 ]; do
-        printf '\033[7A'
+        nl_ui_frame=$(nl_ui_brand_frame "$nl_ui_position") ||
+            exit 1
 
-        nl_ui_animation_frame "$nl_ui_position"
-
-        sleep 0.065
-
+        nl_ui_frames="${nl_ui_frames}${nl_ui_frame}${nl_ui_frame_delimiter}"
         nl_ui_position=$((nl_ui_position + 5))
     done
 
-    # Restore the exact static brand palette.
-    printf '\033[7A'
-    nl_ui_animation_frame -1
+    nl_ui_frames="${nl_ui_frames}${nl_ui_static_frame}${nl_ui_frame_delimiter}"
+
+    nl_ui_original_geometry="$NL_UI_COLUMNS $NL_UI_ROWS"
+
+    # Verify geometry again after frame preparation.
+    if [ "$(nl_ui_terminal_geometry || true)" != "$nl_ui_original_geometry" ]; then
+        nl_ui_detect_terminal
+        nl_ui_logo
+        exit $?
+    fi
+
+    printf '\n%s\n' "$nl_ui_static_frame" ||
+        exit 1
+
+    while [ -n "$nl_ui_frames" ]; do
+        # Never issue another cursor-up operation after detecting
+        # a change in terminal geometry.
+        if [ "$(nl_ui_terminal_geometry || true)" != "$nl_ui_original_geometry" ]; then
+            nl_ui_reset
+            printf '\n'
+            exit 0
+        fi
+
+        nl_ui_frame=${nl_ui_frames%%"$nl_ui_frame_delimiter"*}
+        nl_ui_frames=${nl_ui_frames#*"$nl_ui_frame_delimiter"}
+
+        # Move to the beginning of the seven-line frame.
+        printf '\033[7A\r%s\n' "$nl_ui_frame" ||
+            exit 1
+
+        if [ -n "$nl_ui_frames" ]; then
+            sleep 0.065 ||
+                exit 1
+        fi
+    done
 
     nl_ui_reset
     printf '\n'
 )
-
 
 # -------------------------------------------------------------------
 # System identity and semantic presentation

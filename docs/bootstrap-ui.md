@@ -32,6 +32,7 @@ The standalone preview does not enroll hosts, install applications, reconcile co
 | `scripts/preview-bootstrap-ui.sh` | Standalone presentation simulation |
 | `scripts/test-bootstrap-ui.sh` | Automated presentation regression tests |
 | `install.sh` | Authoritative bootstrap execution workflow |
+| `scripts/test-bootstrap-ui-pty.py` | Automated interactive terminal compatibility and animation regression tests |
 
 The presentation library is sourced by its caller. It does not independently initiate bootstrap execution, change global shell options, or install signal handlers.
 
@@ -141,41 +142,177 @@ Terminal capabilities are detected using:
 - `COLORTERM`.
 - `NO_COLOR`.
 - `CI`.
-- Terminal column discovery through `tput`, when available.
+- Live terminal geometry through `stty`.
+- UTF-8 locale compatibility through `locale charmap`.
 - Explicit presentation overrides.
 
-Plain presentation is selected when either output stream is non-interactive, `TERM=dumb`, `NO_COLOR` is non-empty, `CI` is non-empty, or plain mode is explicitly requested.
+Plain presentation is selected when either output stream is
+non-interactive, `TERM=dumb`, `NO_COLOR` is non-empty,
+`CI` is non-empty, or plain mode is explicitly requested.
 
-Missing or invalid bootstrap palette data disables colored rendering and animation.
+Unrecognized terminal types fall back to plain presentation unless
+truecolor support is explicitly advertised.
+
+Missing or invalid bootstrap palette data disables colored rendering
+and animation.
+
+### Deterministic palette initialization
+
+Presentation initialization resets all palette variables before loading
+the authoritative theme catalog.
+
+If loading or validation fails:
+
+1. All partially loaded palette values are discarded.
+2. The safe default branding slogan is restored.
+3. Plain presentation is selected.
+4. Animation is disabled.
+
+A subsequent initialization can reload valid catalog data without
+retaining state from the failed initialization.
+
+The fallback does not introduce a second hardcoded color palette.
+
+### Live terminal geometry
+
+Terminal geometry is obtained through `stty size`, using the terminal
+associated with standard error.
+
+The renderer validates both terminal columns and rows before using
+them in presentation calculations.
+
+If live terminal geometry cannot be obtained, the presentation
+engine uses a default width of 80 columns and disables animation.
+
+The implementation does not depend on potentially stale `COLUMNS`
+or `LINES` environment variables for animation eligibility.
 
 ### Responsive presentation
 
 | Terminal columns | Logo layout |
 |---|---|
-| 68 or greater | Full-width NOVALABS logo |
+| 68 or greater | Full-width NOVALABS logo, provided the spaced slogan fits |
 | 36–67 | Stacked NOVA and LABS logo |
 | Below 36 | Compact text logo |
 
-Plain mode uses a compact textual brand presentation.
+The slogan is wrapped to fit the configured terminal width when
+the wide layout is unsuitable.
 
-Narrow terminal behavior requires additional compatibility acceptance testing.
+Plain mode uses textual branding.
 
-### Animation
+Non-UTF-8 locales also use textual branding rather than Unicode
+block-letter rendering.
 
-The startup animation applies a moving illumination sweep across the centralized brand gradient.
+Extremely narrow terminals may still wrap the brand name or
+other presentation fields.
 
-Animation is restricted to sufficiently wide interactive terminals using truecolor or ANSI 256-color rendering.
+### Animation eligibility
+
+Animation requires:
+
+- Interactive standard output and standard error.
+- A successfully validated bootstrap palette.
+- Truecolor or ANSI 256-color rendering.
+- Known live terminal geometry.
+- At least 68 terminal columns.
+- At least 10 terminal rows.
+- UTF-8 locale compatibility.
+- A spaced slogan that fits the available terminal width.
+- Fractional sleep support.
+- No explicit animation opt-out.
+
+When these requirements are not satisfied, the renderer selects
+an appropriate static presentation.
+
+### Shared rendering architecture
+
+Static and animated wide branding use the same frame renderer.
+
+The wide brand frame consists of five bitmap rows, one blank
+separator row, and one slogan row.
+
+```mermaid
+flowchart TD
+    A["NovaLabs branding"] --> B["Validated palette"]
+    B --> C["Terminal capabilities"]
+    C --> D{"Animation eligible?"}
+    D -->|Yes| E["Prepare bitmap and slogan"]
+    D -->|No| F["Select responsive layout"]
+    E --> G["Shared wide frame renderer"]
+    F -->|Wide layout| G
+    F -->|Compact or stacked| H["Static responsive renderer"]
+    G --> I{"Animated playback?"}
+    I -->|Yes| J["Prepare in-memory frame buffer"]
+    I -->|No| K["Static terminal output"]
+    H --> K
+    J --> L["Check live terminal geometry"]
+    L --> M{"Geometry unchanged?"}
+    M -->|Yes| N["Redraw prepared frame"]
+    N --> O{"Frames remaining?"}
+    O -->|Yes| L
+    O -->|No| P["Complete animation"]
+    M -->|No| Q["Stop cursor redraw"]
+
+    classDef brand fill:#BD93F9,stroke:#6272A4,color:#161923
+    classDef decision fill:#FF79C6,stroke:#FF79C6,color:#161923
+    classDef process fill:#282A36,stroke:#6272A4,color:#F7F7FB
+    classDef success fill:#50FA7B,stroke:#50FA7B,color:#161923
+    classDef fallback fill:#FF7F3F,stroke:#FF7F3F,color:#161923
+
+    class A,G brand
+    class D,I,M,O decision
+    class B,C,E,F,H,J,L,N process
+    class K,P success
+    class Q fallback
+```
+
+### Animation playback
+
+The startup animation applies a moving illumination sweep across
+the centralized NovaLabs brand gradient.
+
+Animation frames are prepared in memory before playback begins.
+
+The playback sequence consists of:
+
+1. An initial static brand frame.
+2. Twenty-one illumination frames.
+3. A final frame restoring the original brand gradient.
+
+The interval between animation frames is approximately 65
+milliseconds, producing approximately 1.4 seconds of playback,
+excluding frame preparation and terminal output overhead.
+
+Before playback begins, terminal geometry is checked again.
+
+During playback, live terminal geometry is checked before each
+cursor redraw. If a geometry change is detected, further cursor
+redraw operations are stopped.
 
 The implementation does not:
 
 - Clear the entire terminal screen.
 - Hide the terminal cursor.
+- Modify terminal modes.
 - Start background animation processes.
+- Create temporary animation files.
 - Introduce an external animation runtime.
 
-Animation can be explicitly disabled.
+Animation can be explicitly disabled without disabling color.
 
-Terminal resizing and signal interruption behavior remain subject to additional regression testing.
+### Rendering limitations
+
+Geometry discovery and terminal output are separate operations.
+A resize can occur between a geometry check and a frame redraw.
+
+The renderer cannot guarantee atomic resize handling using
+portable shell utilities alone.
+
+Non-UTF-8 fallback currently applies to branding. Other Unicode
+presentation elements require additional compatibility review.
+
+Signal interruption behavior remains subject to additional
+integration testing.
 
 ## System identity
 
@@ -432,15 +569,23 @@ sh -n scripts/preview-bootstrap-ui.sh
 
 ### Regression coverage
 
-The current suite contains 31 presentation checkpoints.
+The presentation engine is validated by two complementary
+regression suites.
 
-| Category | Checkpoints |
-|---|---:|
-| Branding and terminal rendering | 13 |
-| System identity and host palettes | 6 |
-| Timing and stage state management | 6 |
-| Preview scenarios and CLI validation | 6 |
-| **Total** | **31** |
+| Suite | Checkpoints | Result |
+|---|---:|---|
+| Branding and terminal rendering | 13 | Passed |
+| System identity and host palettes | 6 | Passed |
+| Timing and stage state management | 6 | Passed |
+| Preview scenarios and CLI validation | 6 | Passed |
+| Palette initialization safety | 5 | Passed |
+| Pseudo-terminal compatibility | 11 | Passed |
+| **Total** | **47** | **Passed** |
+
+The shell regression suite contains 36 checkpoints.
+
+The pseudo-terminal regression suite contains 11 checkpoints
+and exercises actual terminal devices with controlled geometry.
 
 Coverage includes:
 
@@ -459,6 +604,58 @@ Coverage includes:
 - Valid and invalid stage transitions.
 - Successful, failed, and incomplete execution summaries.
 - Standard, Proxmox, failed, and OPNsense preview scenarios.
+
+### Pseudo-terminal regression testing
+
+Run the interactive terminal regression suite from the
+repository root:
+
+```bash
+python3 scripts/test-bootstrap-ui-pty.py
+```
+
+The suite uses Python standard-library pseudo-terminal facilities
+to exercise terminal behavior under controlled conditions.
+
+Python is a development and testing dependency only. It is not
+required by the production presentation engine.
+
+| Checkpoint | Result |
+|---|---|
+| Live geometry and ANSI 256-color animation | Passed |
+| Truecolor animation | Passed |
+| Minimum animation geometry | Passed |
+| Narrow terminal static fallback | Passed |
+| Insufficient terminal height fallback | Passed |
+| Explicit animation opt-out | Passed |
+| NO_COLOR compatibility | Passed |
+| CI plain-text compatibility | Passed |
+| Non-UTF-8 branding fallback | Passed |
+| Live terminal resize protection | Passed |
+| Final animation frame consistency | Passed |
+
+The suite verifies emitted terminal control sequences, animation
+eligibility, redraw counts, fallback behavior and final visible
+frame consistency.
+
+The resize test permits one potentially in-flight redraw while
+requiring subsequent animation playback to stop.
+
+Final-frame consistency testing compares visible frame content
+and geometry rather than exact ANSI color sequences.
+
+### Palette initialization safety
+
+Five additional shell regression checkpoints verify:
+
+- Deterministic fallback after previous initialization.
+- Malformed brand color fallback.
+- Malformed slogan fallback.
+- Late palette-loading failure isolation.
+- Recovery after malformed catalog data.
+
+Malformed catalog tests use isolated temporary fixtures and do
+not modify the authoritative theme catalog.
 
 ### Acceptance record
 
@@ -514,20 +711,34 @@ The following areas require additional validation or integration work:
 - Production installer integration.
 - Authoritative ChezMoi host profile resolution.
 - Preservation of real command exit statuses.
-- Presentation failure isolation.
+- Production presentation failure isolation.
 - Signal interruption and cleanup behavior.
-- Terminal resizing during animation.
-- Automated pseudo-terminal compatibility testing.
-- Narrow terminal layout acceptance.
-- Malformed catalog fallback behavior.
-- Consolidation of duplicated logo rendering paths.
+- Non-UTF-8 compatibility outside branding.
+- Extremely narrow terminal layout acceptance.
 - Live AMD64 and ARM64 bootstrap canary validation.
 
-The animation renderer currently assumes a fixed seven-line wide-logo frame during redraw. Terminal resizing and wrapping can invalidate that assumption.
+Live terminal resize protection has passed automated pseudo-terminal
+testing. However, a race remains possible between checking terminal
+geometry and issuing a redraw.
+
+The wide animation frame assumes that its seven rendered lines fit
+the detected terminal geometry.
+
+Malformed palette initialization is covered by regression testing.
+The restricted catalog reader remains intentionally narrower than
+a general-purpose TOML parser.
 
 Elapsed-time measurements are not monotonic.
 
-Preview timings represent demonstration execution, not actual infrastructure reconciliation performance.
+Preview timings represent demonstration execution, not actual
+infrastructure reconciliation performance.
+
+The current acceptance record consists of 36 shell regression
+checkpoints and 11 pseudo-terminal regression checkpoints, all
+passing on the AMD64 WSL development environment.
+
+These results establish presentation acceptance, not production
+bootstrap acceptance.
 
 ## Implementation roadmap
 

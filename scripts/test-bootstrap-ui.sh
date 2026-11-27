@@ -503,5 +503,166 @@ done
 
 pass "ANSI-free execution summaries"
 
+# -------------------------------------------------------------------
+# Phase 4: Presentation initialization safety
+# -------------------------------------------------------------------
+
+# 32. Deterministic fallback after previous initialization.
+nl_ui_init "$ROOT"
+
+[[ "$NL_UI_PALETTE_READY" == true ]] ||
+    fail "Valid palette initialization failed"
+
+NL_UI_SLOGAN="STALE PREVIOUS STATE"
+NL_UI_BRAND_1="#123456"
+NL_UI_HEADER="#123456"
+
+nl_ui_init "$TEST_ROOT/nonexistent"
+
+[[ "$NL_UI_PALETTE_READY" == false ]] ||
+    fail "Missing palette reported as ready"
+
+[[ "$NL_UI_COLOR_MODE" == plain ]] ||
+    fail "Missing palette did not select plain mode"
+
+[[ "$NL_UI_ANIMATE" == false ]] ||
+    fail "Missing palette did not disable animation"
+
+[[ "$NL_UI_SLOGAN" == "DECLARATIVE INFRASTRUCTURE" ]] ||
+    fail "Default slogan was not restored"
+
+[[ -z "$NL_UI_BRAND_1" && -z "$NL_UI_HEADER" ]] ||
+    fail "Previous palette state was retained"
+
+pass "Deterministic palette fallback"
+
+# Create an isolated catalog fixture.
+fixture="$TEST_ROOT/malformed-catalog"
+
+mkdir -p "$fixture/.chezmoidata"
+
+catalog="$ROOT/.chezmoidata/theme.toml"
+fixture_catalog="$fixture/.chezmoidata/theme.toml"
+
+# 33. Malformed brand color.
+sed \
+    's/^stop_1[[:space:]]*=.*/stop_1 = "#INVALID"/' \
+    "$catalog" > "$fixture_catalog"
+
+grep -Fxq 'stop_1 = "#INVALID"' "$fixture_catalog" ||
+    fail "Malformed brand fixture was not generated"
+
+nl_ui_init "$fixture"
+
+[[ "$NL_UI_PALETTE_READY" == false ]] ||
+    fail "Malformed brand palette accepted"
+
+[[ "$NL_UI_COLOR_MODE" == plain ]] ||
+    fail "Malformed brand palette retained color mode"
+
+[[ "$NL_UI_ANIMATE" == false ]] ||
+    fail "Malformed brand palette retained animation"
+
+[[ -z "$NL_UI_BRAND_1" ]] ||
+    fail "Malformed brand value was retained"
+
+pass "Malformed brand color fallback"
+
+# 34. Malformed slogan.
+sed \
+    's/^slogan[[:space:]]*=.*/slogan = "Invalid slogan 123"/' \
+    "$catalog" > "$fixture_catalog"
+
+grep -Fxq 'slogan = "Invalid slogan 123"' "$fixture_catalog" ||
+    fail "Malformed slogan fixture was not generated"
+
+nl_ui_init "$fixture"
+
+[[ "$NL_UI_PALETTE_READY" == false ]] ||
+    fail "Malformed slogan accepted"
+
+[[ "$NL_UI_SLOGAN" == "DECLARATIVE INFRASTRUCTURE" ]] ||
+    fail "Malformed slogan was retained"
+
+actual="$(nl_ui_logo)"
+
+[[ "$actual" != *"Invalid slogan 123"* ]] ||
+    fail "Malformed slogan reached terminal output"
+
+[[ "$actual" != *$'\033'* ]] ||
+    fail "Fallback logo contains ANSI escapes"
+
+pass "Malformed slogan fallback"
+
+# 35. Late palette-loading failure.
+# Remove the required muted color after earlier values can load.
+awk '
+    /^\[/ {
+        active = ($0 == "[theme.tui]")
+    }
+
+    active && /^muted[[:space:]]*=/ {
+        removed++
+        next
+    }
+
+    { print }
+
+    END {
+        if (removed != 1)
+            exit 1
+    }
+' "$catalog" > "$fixture_catalog" ||
+    fail "Late failure fixture was not generated"
+
+nl_ui_init "$fixture"
+
+[[ "$NL_UI_PALETTE_READY" == false ]] ||
+    fail "Incomplete palette accepted"
+
+[[ "$NL_UI_COLOR_MODE" == plain ]] ||
+    fail "Incomplete palette retained color mode"
+
+[[ "$NL_UI_ANIMATE" == false ]] ||
+    fail "Incomplete palette retained animation"
+
+for variable in \
+    NL_UI_BRAND_1 \
+    NL_UI_BRAND_2 \
+    NL_UI_BRAND_3 \
+    NL_UI_BRAND_4 \
+    NL_UI_BRAND_5 \
+    NL_UI_BRAND_6 \
+    NL_UI_HEADER \
+    NL_UI_HIGHLIGHT \
+    NL_UI_SUCCESS \
+    NL_UI_ERROR \
+    NL_UI_WARNING \
+    NL_UI_FOREGROUND \
+    NL_UI_MUTED
+do
+    [[ -z "${!variable}" ]] ||
+        fail "Partial palette state retained: $variable"
+done
+
+pass "Late palette-loading failure isolation"
+
+# 36. Recovery from malformed catalog data.
+nl_ui_init "$ROOT"
+
+[[ "$NL_UI_PALETTE_READY" == true ]] ||
+    fail "Valid palette recovery failed"
+
+nl_ui_valid_hex "$NL_UI_BRAND_1" ||
+    fail "Recovered brand color is invalid"
+
+nl_ui_valid_hex "$NL_UI_MUTED" ||
+    fail "Recovered muted color is invalid"
+
+[[ "$NL_UI_SLOGAN" == "DECLARATIVE INFRASTRUCTURE" ]] ||
+    fail "Recovered slogan is invalid"
+
+pass "Valid palette recovery after malformed data"
+
 printf '%s\n' '============================================================'
 printf 'PASS: All %s presentation checkpoints validated\n' "$passed"
