@@ -273,5 +273,85 @@ absent '[OK] Host policy validated.'
 trace_is version version enroll render-validator validate profile with-docker chronytop-policy docker-info
 pass 'Docker prerequisite failure retains existing guard'
 
+# 13. Authoritative profile, independent of current hostname.
+reset_fixture
+run_apply FIXTURE_PROFILE=lovelace
+tracked_prefix
+contains 'HOST PROFILE'
+grep -Eq '^  Profile[[:space:]]+lovelace$' "$OUT" || fail 'Incorrect profile'
+grep -Eq '^  Identity[[:space:]]+Lovelace$' "$OUT" || fail 'Incorrect identity'
+contains '#af63e1'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy boundary
+pass 'Authoritative profile selection'
+
+# 14. All catalog identities, including stage-only OPNsense metadata.
+# OPNsense here is a mocked profile on Linux, not a real supported apply.
+for entry in 'any|Generic Linux|Dracula Classic|#FF79C6' 'proxmox|Proxmox|Ember orange|#ff9b3e' 'docker|Docker LXC|Cyan blue|#5ab7ff' 'pihole|Pi-hole|Electric lime|#f8547a' 'ubuntulab|UbuntuLab|Golden amber|#ff823a' 'opnsense|OPNsense|Crimson red|#f66c88' 'zgx|ZGX|GPU emerald|#5ff70d' 'lovelace|Lovelace|Violet purple|#af63e1' 'worker1|Worker node|Kubernetes cobalt|#ffe645'; do
+    IFS='|' read -r p name family accent <<< "$entry"
+    reset_fixture
+    run_apply FIXTURE_PROFILE="$p"
+    tracked_prefix
+    grep -Eq "^  Profile[[:space:]]+$p$" "$OUT" || fail "Profile missing: $p"
+    grep -Fq "$name" "$OUT" || fail "Identity missing: $p"
+    grep -Fq "$family" "$OUT" || fail "Family missing: $p"
+    grep -Fq "$accent" "$OUT" || fail "Accent missing: $p"
+done
+pass 'All nine catalog identities in mocked apply prefix'
+
+# 15. Generic enrollment is not inferred from the hostname.
+reset_fixture
+run_apply
+tracked_prefix
+grep -Eq '^  Profile[[:space:]]+any$' "$OUT" || fail 'Generic profile missing'
+contains 'Generic Linux'
+pass 'Generic enrollment remains authoritative'
+
+# 16. Missing catalog does not stop execution.
+reset_fixture
+rm "$FIXTURE/.chezmoidata/theme.toml"
+run_apply
+tracked_prefix
+absent 'HOST PROFILE'
+pass 'Missing presentation catalog preserves execution'
+
+# 17. Missing display metadata does not stop execution.
+reset_fixture
+sed -i '/^\[theme.hosts.lovelace\]$/,/^\[/ { /^display_name =/d; }' "$FIXTURE/.chezmoidata/theme.toml"
+run_apply FIXTURE_PROFILE=lovelace
+tracked_prefix
+absent 'HOST PROFILE'
+pass 'Missing host metadata preserves execution'
+
+# 18. Invalid palette omits accent and palette, retains identity.
+reset_fixture
+sed -i '/^\[theme.hosts.lovelace\]$/,/^\[/ s/^shade_2 =.*/shade_2 = "invalid"/' "$FIXTURE/.chezmoidata/theme.toml"
+run_apply FIXTURE_PROFILE=lovelace
+tracked_prefix
+contains 'HOST PROFILE'
+contains 'Lovelace'
+absent 'Host accent'
+absent 'Host palette'
+pass 'Malformed host palette omitted'
+
+# 19. Explicit host renderer failure cannot stop execution.
+reset_fixture
+cat >> "$FIXTURE/scripts/lib/bootstrap-ui.sh" <<'EOF'
+nl_ui_host_identity() { return 47; }
+EOF
+run_apply FIXTURE_PROFILE=lovelace
+tracked_prefix
+absent 'HOST PROFILE'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy boundary
+pass 'Host identity rendering failure preserves execution'
+
+# 20. Host identity must never be rendered before validation succeeds.
+reset_fixture
+run_apply FIXTURE_PROFILE=docker DOCKER_STATUS=46
+status 1
+absent 'HOST PROFILE'
+absent '[OK] Host policy validated.'
+trace_is version version enroll render-validator validate profile with-docker chronytop-policy docker-info
+pass 'Host validation precedes identity rendering'
+
 printf '%s\n' '============================================================'
 printf 'PASS: All %s apply-prefix checkpoints validated\n' "$passed"

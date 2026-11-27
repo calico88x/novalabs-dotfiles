@@ -999,6 +999,38 @@ nl_ui_host_palette() (
     printf '\n'
 )
 
+# Resolve presentation metadata only after authoritative host validation.
+# A subshell keeps presentation-only variables out of infrastructure policy.
+nl_ui_resolved_host_identity() (
+    case "$1" in
+        any|proxmox|docker|pihole|ubuntulab|opnsense|zgx|lovelace|worker1) ;;
+        *) return 0 ;;
+    esac
+    nl_ui_host_catalog="$2/.chezmoidata/theme.toml"
+    [ -r "$nl_ui_host_catalog" ] || return 0
+    nl_ui_host_section="theme.hosts.$1"
+    nl_ui_host_name=$(nl_ui_catalog_value "$nl_ui_host_catalog" "$nl_ui_host_section" display_name 2>/dev/null) || return 0
+    nl_ui_host_family=$(nl_ui_catalog_value "$nl_ui_host_catalog" "$nl_ui_host_section" family 2>/dev/null) || return 0
+    [ -n "$nl_ui_host_name" ] && [ -n "$nl_ui_host_family" ] || return 0
+    # Reject control characters in display metadata.
+    if printf '%s\n' "$nl_ui_host_name" "$nl_ui_host_family" | LC_ALL=C grep -q '[[:cntrl:]]'; then
+        return 0
+    fi
+    nl_ui_host_s1=$(nl_ui_catalog_value "$nl_ui_host_catalog" "$nl_ui_host_section" shade_1 2>/dev/null) || nl_ui_host_s1=''
+    nl_ui_host_s2=$(nl_ui_catalog_value "$nl_ui_host_catalog" "$nl_ui_host_section" shade_2 2>/dev/null) || nl_ui_host_s2=''
+    nl_ui_host_s3=$(nl_ui_catalog_value "$nl_ui_host_catalog" "$nl_ui_host_section" shade_3 2>/dev/null) || nl_ui_host_s3=''
+    nl_ui_host_s4=$(nl_ui_catalog_value "$nl_ui_host_catalog" "$nl_ui_host_section" shade_4 2>/dev/null) || nl_ui_host_s4=''
+    # Suppress the entire palette and accent if any shade is invalid.
+    for nl_ui_host_shade in "$nl_ui_host_s1" "$nl_ui_host_s2" "$nl_ui_host_s3" "$nl_ui_host_s4"; do
+        if ! nl_ui_valid_hex "$nl_ui_host_shade"; then
+            nl_ui_host_s1=''; nl_ui_host_s2=''; nl_ui_host_s3=''; nl_ui_host_s4=''
+            break
+        fi
+    done
+    nl_ui_host_identity "$1" "$nl_ui_host_name" "$nl_ui_host_family" \
+        "$nl_ui_host_s1" "$nl_ui_host_s2" "$nl_ui_host_s3" "$nl_ui_host_s4"
+)
+
 # Display resolved host profile information.
 #
 # Arguments:

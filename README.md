@@ -412,7 +412,8 @@ selects animated, static or plain presentation according to terminal
 capabilities and CLI preferences. An unavailable presentation library or
 explicit rendering failure selects the original native preview.
 Apply mode now displays startup branding and tracks runtime initialization,
-ChezMoi enrollment and host policy validation. Later stages retain their
+ChezMoi enrollment and host policy validation, followed by optional host
+identity and palette presentation from the validated profile. Later stages retain their
 original native output. Existing infrastructure commands and native output
 remain unchanged; final execution summaries and lifecycle handling are
 pending.
@@ -441,7 +442,8 @@ flowchart TD
     G --> I
     D -->|Apply| P["Optional apply branding and tracker"]
     P --> Q["Stages 01–03: runtime, enrollment, validation"]
-    Q -->|Success| J["Existing stages 04–08"]
+    Q -->|Success| R["Optional authoritative host identity"]
+    R --> J["Existing stages 04–08"]
     Q -->|Failure| M
     J --> K{"Execution result"}
     K -->|Success| L["Successful completion"]
@@ -457,7 +459,7 @@ flowchart TD
     classDef process fill:#282A36,stroke:#6272A4,color:#F7F7FB
     classDef fallback fill:#FF7F3F,stroke:#FF7F3F,color:#161923
 
-    class A,F,P brand
+    class A,F,P,R brand
     class I,L,N success
     class M failure
     class D,E,H,K decision
