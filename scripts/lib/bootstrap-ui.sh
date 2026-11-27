@@ -606,3 +606,497 @@ nl_ui_animate_logo() (
     nl_ui_reset
     printf '\n'
 )
+
+
+# -------------------------------------------------------------------
+# System identity and semantic presentation
+# -------------------------------------------------------------------
+
+# Print a section separator appropriate to the terminal width.
+nl_ui_separator() (
+    nl_ui_width=${NL_UI_COLUMNS:-80}
+
+    if [ "$nl_ui_width" -gt 63 ]; then
+        nl_ui_width=63
+    fi
+
+    if [ "$nl_ui_width" -gt 1 ]; then
+        nl_ui_width=$((nl_ui_width - 1))
+    fi
+
+    nl_ui_color "${NL_UI_MUTED:-}" 90
+
+    nl_ui_i=0
+
+    while [ "$nl_ui_i" -lt "$nl_ui_width" ]; do
+        printf '%s' '-'
+        nl_ui_i=$((nl_ui_i + 1))
+    done
+
+    nl_ui_reset
+    printf '\n'
+)
+
+# Print a purple section heading.
+nl_ui_heading() {
+    printf '\n'
+    nl_ui_text "${NL_UI_HEADER:-}" 35 "$1"
+    printf '\n\n'
+}
+
+# Print an aligned metadata field.
+#
+# Arguments:
+#   $1: field label
+#   $2: field value
+#   $3: optional presentation role (normal or highlight)
+nl_ui_field() (
+    nl_ui_color "${NL_UI_MUTED:-}" 90
+    printf '  %-16s ' "$1"
+    nl_ui_reset
+
+    case "${3:-normal}" in
+        highlight)
+            nl_ui_text "${NL_UI_HIGHLIGHT:-}" 95 "$2"
+            ;;
+        *)
+            nl_ui_text "${NL_UI_FOREGROUND:-}" 37 "$2"
+            ;;
+    esac
+
+    printf '\n'
+)
+
+# Print a semantic status indicator.
+#
+# Supported states:
+#   success, failure, warning, running, skipped, info
+#
+# This function reports presentation state only. It does not
+# execute commands or determine their success.
+nl_ui_status() (
+    case "$1" in
+        success)
+            nl_ui_symbol="✓"
+            nl_ui_ascii="[OK]"
+            nl_ui_status_color="${NL_UI_SUCCESS:-}"
+            nl_ui_status_fallback=32
+            ;;
+        failure)
+            nl_ui_symbol="✗"
+            nl_ui_ascii="[FAIL]"
+            nl_ui_status_color="${NL_UI_ERROR:-}"
+            nl_ui_status_fallback=31
+            ;;
+        warning)
+            nl_ui_symbol="!"
+            nl_ui_ascii="[WARN]"
+            nl_ui_status_color="${NL_UI_WARNING:-}"
+            nl_ui_status_fallback=33
+            ;;
+        running)
+            nl_ui_symbol="→"
+            nl_ui_ascii="[RUN]"
+            nl_ui_status_color="${NL_UI_HIGHLIGHT:-}"
+            nl_ui_status_fallback=95
+            ;;
+        skipped)
+            nl_ui_symbol="–"
+            nl_ui_ascii="[SKIP]"
+            nl_ui_status_color="${NL_UI_MUTED:-}"
+            nl_ui_status_fallback=90
+            ;;
+        info)
+            nl_ui_symbol="•"
+            nl_ui_ascii="[INFO]"
+            nl_ui_status_color="${NL_UI_HEADER:-}"
+            nl_ui_status_fallback=35
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+
+    printf '  '
+
+    if [ "${NL_UI_COLOR_MODE:-plain}" = plain ]; then
+        printf '%s' "$nl_ui_ascii"
+    else
+        nl_ui_text "$nl_ui_status_color" \
+            "$nl_ui_status_fallback" "$nl_ui_symbol"
+    fi
+
+    printf ' %s\n' "$2"
+)
+
+# Normalize common CPU architecture identifiers for display.
+nl_ui_architecture() {
+    case "$1" in
+        x86_64|amd64)
+            printf '%s\n' AMD64
+            ;;
+        aarch64|arm64)
+            printf '%s\n' ARM64
+            ;;
+        *)
+            printf '%s\n' "$1"
+            ;;
+    esac
+}
+
+# Obtain the source repository revision without network access.
+# Git is optional during early bootstrap.
+nl_ui_revision() (
+    if command -v git >/dev/null 2>&1; then
+        if nl_ui_sha=$(git -C "$1" rev-parse \
+            --short=7 HEAD 2>/dev/null)
+        then
+            printf '%s\n' "$nl_ui_sha"
+            exit 0
+        fi
+    fi
+
+    printf '%s\n' unknown
+)
+
+# Display system identity without initializing ChezMoi.
+#
+# Arguments:
+#   $1: repository root
+#   $2: distribution display name
+#   $3: execution mode
+#
+# Profile information is intentionally omitted until authoritative
+# enrollment data has been resolved and validated.
+nl_ui_system_identity() (
+    nl_ui_hostname=$(uname -n 2>/dev/null) ||
+        nl_ui_hostname=unknown
+
+    nl_ui_kernel=$(uname -s 2>/dev/null) ||
+        nl_ui_kernel=unknown
+
+    nl_ui_machine=$(uname -m 2>/dev/null) ||
+        nl_ui_machine=unknown
+
+    nl_ui_arch=$(nl_ui_architecture "$nl_ui_machine")
+    nl_ui_release=$(nl_ui_revision "$1")
+
+    case "$3" in
+        preview) nl_ui_mode=PREVIEW ;;
+        apply)   nl_ui_mode=APPLY ;;
+        *)       nl_ui_mode="$3" ;;
+    esac
+
+    nl_ui_separator
+    nl_ui_heading "SYSTEM IDENTITY"
+
+    nl_ui_field "Hostname" "$nl_ui_hostname" highlight
+    nl_ui_field "Distribution" "$2"
+    nl_ui_field "Kernel" "$nl_ui_kernel"
+    nl_ui_field "Architecture" "$nl_ui_arch"
+    nl_ui_field "Release" "$nl_ui_release" highlight
+    nl_ui_field "Mode" "$nl_ui_mode" highlight
+
+    printf '\n'
+)
+
+# Display requested runtime versions.
+# This does not claim that the runtimes are installed or verified.
+nl_ui_runtime_identity() {
+    nl_ui_separator
+    nl_ui_heading "BOOTSTRAP RUNTIME"
+
+    nl_ui_field "Mise target" "$1" highlight
+    nl_ui_field "ChezMoi target" "$2" highlight
+
+    printf '\n'
+}
+
+
+# -------------------------------------------------------------------
+# Resolved host identity presentation
+# -------------------------------------------------------------------
+
+# Render a four-color host palette.
+#
+# Arguments:
+#   $1-$4: authoritative host palette shades
+#
+# Invalid palette data is omitted rather than interrupting bootstrap.
+nl_ui_host_palette() (
+    for nl_ui_shade in "$1" "$2" "$3" "$4"; do
+        nl_ui_valid_hex "$nl_ui_shade" || exit 0
+    done
+
+    nl_ui_color "${NL_UI_MUTED:-}" 90
+    printf '  %-16s ' "Host palette"
+    nl_ui_reset
+
+    if [ "${NL_UI_COLOR_MODE:-plain}" = plain ]; then
+        printf '%s %s %s %s\n' "$1" "$2" "$3" "$4"
+        exit 0
+    fi
+
+    for nl_ui_shade in "$1" "$2" "$3" "$4"; do
+        nl_ui_text "$nl_ui_shade" 35 "████"
+    done
+
+    printf '\n'
+)
+
+# Display resolved host profile information.
+#
+# Arguments:
+#   $1: enrolled profile identifier
+#   $2: profile display name
+#   $3: theme family
+#   $4: palette shade_1
+#   $5: palette shade_2
+#   $6: palette shade_3
+#   $7: palette shade_4
+#
+# The caller is responsible for resolving and validating the profile.
+# This function does not infer enrollment from the hostname.
+nl_ui_host_identity() {
+    nl_ui_separator
+    nl_ui_heading "HOST PROFILE"
+
+    nl_ui_field "Profile" "$1" highlight
+    nl_ui_field "Identity" "$2"
+    nl_ui_field "Theme family" "$3"
+
+    if nl_ui_valid_hex "$7"; then
+        nl_ui_color "${NL_UI_MUTED:-}" 90
+        printf '  %-16s ' "Host accent"
+        nl_ui_reset
+
+        nl_ui_text "$7" 35 "$7"
+        printf '\n'
+    fi
+
+    nl_ui_host_palette "$4" "$5" "$6" "$7"
+
+    printf '\n'
+}
+
+
+# -------------------------------------------------------------------
+# Bootstrap stage tracking and execution summaries
+# -------------------------------------------------------------------
+
+# Obtain a wall-clock timestamp in whole seconds.
+# Timing failures must not prevent bootstrap execution.
+nl_ui_now() (
+    nl_ui_timestamp=$(date +%s 2>/dev/null) ||
+        nl_ui_timestamp=0
+
+    case "$nl_ui_timestamp" in
+        ''|*[!0-9]*)
+            nl_ui_timestamp=0
+            ;;
+    esac
+
+    printf '%s\n' "$nl_ui_timestamp"
+)
+
+# Calculate elapsed seconds.
+# Guard against unavailable timestamps and backward clock changes.
+nl_ui_elapsed() {
+    if [ "$1" -gt 0 ] &&
+       [ "$2" -ge "$1" ]
+    then
+        printf '%s\n' "$(($2 - $1))"
+    else
+        printf '%s\n' 0
+    fi
+}
+
+# Initialize execution tracking.
+#
+# $1: total number of planned stages.
+nl_ui_tracker_init() {
+    case "$1" in
+        ''|*[!0-9]*|0|0*)
+            return 1
+            ;;
+    esac
+
+    NL_UI_STAGE_TOTAL="$1"
+    NL_UI_STAGE_NUMBER=0
+    NL_UI_STAGE_COMPLETED=0
+    NL_UI_STAGE_SKIPPED=0
+    NL_UI_STAGE_FAILED=0
+    NL_UI_STAGE_ACTIVE=false
+    NL_UI_STAGE_NAME=""
+    NL_UI_STAGE_STARTED=0
+    NL_UI_TRACKER_STARTED=$(nl_ui_now)
+
+    return 0
+}
+
+# Begin a new execution stage.
+#
+# This function only reports that a stage has started.
+# It does not execute or wrap the underlying command.
+nl_ui_stage_begin() {
+    [ "$NL_UI_STAGE_ACTIVE" = false ] ||
+        return 1
+
+    [ "$NL_UI_STAGE_NUMBER" -lt "$NL_UI_STAGE_TOTAL" ] ||
+        return 1
+
+    [ "$NL_UI_STAGE_FAILED" -eq 0 ] ||
+        return 1
+
+    NL_UI_STAGE_NUMBER=$((NL_UI_STAGE_NUMBER + 1))
+    NL_UI_STAGE_NAME="$1"
+    NL_UI_STAGE_ACTIVE=true
+    NL_UI_STAGE_STARTED=$(nl_ui_now)
+
+    printf '\n'
+
+    nl_ui_color "${NL_UI_HEADER:-}" 35
+
+    printf '[%02d/%02d] %s\n' \
+        "$NL_UI_STAGE_NUMBER" \
+        "$NL_UI_STAGE_TOTAL" \
+        "$NL_UI_STAGE_NAME"
+
+    nl_ui_reset
+
+    return 0
+}
+
+# Print the elapsed time of the active stage.
+nl_ui_stage_duration() (
+    nl_ui_finished=$(nl_ui_now)
+
+    nl_ui_duration=$(nl_ui_elapsed \
+        "$NL_UI_STAGE_STARTED" \
+        "$nl_ui_finished")
+
+    nl_ui_text "${NL_UI_MUTED:-}" 90 \
+        "    Elapsed: ${nl_ui_duration}s"
+
+    printf '\n'
+)
+
+# Record a successfully completed stage.
+nl_ui_stage_pass() {
+    [ "$NL_UI_STAGE_ACTIVE" = true ] ||
+        return 1
+
+    NL_UI_STAGE_COMPLETED=$((NL_UI_STAGE_COMPLETED + 1))
+    NL_UI_STAGE_ACTIVE=false
+
+    nl_ui_status success "$1"
+    nl_ui_stage_duration
+
+    return 0
+}
+
+# Record an intentionally skipped stage.
+nl_ui_stage_skip() {
+    [ "$NL_UI_STAGE_ACTIVE" = true ] ||
+        return 1
+
+    NL_UI_STAGE_SKIPPED=$((NL_UI_STAGE_SKIPPED + 1))
+    NL_UI_STAGE_ACTIVE=false
+
+    nl_ui_status skipped "$1"
+    nl_ui_stage_duration
+
+    return 0
+}
+
+# Record a failed stage.
+#
+# Arguments:
+#   $1: actual nonzero exit status
+#   $2: failure description
+#
+# Reporting a failure must not replace the original command's
+# exit status. The caller retains responsibility for exiting.
+nl_ui_stage_fail() {
+    [ "$NL_UI_STAGE_ACTIVE" = true ] ||
+        return 1
+
+    case "$1" in
+        ''|*[!0-9]*|0|0*)
+            return 1
+            ;;
+    esac
+
+    NL_UI_STAGE_FAILED=$((NL_UI_STAGE_FAILED + 1))
+    NL_UI_STAGE_ACTIVE=false
+
+    nl_ui_status failure "$2 (exit status: $1)"
+    nl_ui_stage_duration
+
+    return 0
+}
+
+# Print the final execution summary.
+#
+# $1: actual bootstrap exit status.
+#
+# A successful summary requires every planned stage to have
+# been explicitly completed or skipped.
+nl_ui_summary() (
+    nl_ui_exit_status="$1"
+
+    nl_ui_processed=$((NL_UI_STAGE_COMPLETED \
+        + NL_UI_STAGE_SKIPPED \
+        + NL_UI_STAGE_FAILED))
+
+    nl_ui_finished=$(nl_ui_now)
+
+    nl_ui_total_duration=$(nl_ui_elapsed \
+        "$NL_UI_TRACKER_STARTED" \
+        "$nl_ui_finished")
+
+    printf '\n'
+    nl_ui_separator
+
+    if [ "$nl_ui_exit_status" -ne 0 ] ||
+       [ "$NL_UI_STAGE_FAILED" -ne 0 ]
+    then
+        nl_ui_heading "BOOTSTRAP FAILED"
+
+        nl_ui_status failure \
+            "Bootstrap did not complete successfully."
+
+    elif [ "$nl_ui_processed" -eq "$NL_UI_STAGE_TOTAL" ] &&
+         [ "$NL_UI_STAGE_ACTIVE" = false ]
+    then
+        nl_ui_heading "BOOTSTRAP COMPLETE"
+
+        nl_ui_status success \
+            "NovaLabs bootstrap completed successfully."
+
+    else
+        nl_ui_heading "BOOTSTRAP INCOMPLETE"
+
+        nl_ui_status warning \
+            "Not all planned stages were completed."
+    fi
+
+    printf '\n'
+
+    nl_ui_field "Stages processed" \
+        "$nl_ui_processed/$NL_UI_STAGE_TOTAL" highlight
+
+    nl_ui_field "Completed" "$NL_UI_STAGE_COMPLETED"
+    nl_ui_field "Skipped" "$NL_UI_STAGE_SKIPPED"
+    nl_ui_field "Failed" "$NL_UI_STAGE_FAILED"
+
+    nl_ui_field "Elapsed time" \
+        "${nl_ui_total_duration}s" highlight
+
+    nl_ui_field "Exit status" "$nl_ui_exit_status" highlight
+
+    printf '\n'
+
+    nl_ui_separator
+    nl_ui_reset
+)

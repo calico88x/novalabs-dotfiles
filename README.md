@@ -367,6 +367,32 @@ Preview the bootstrap first:
 
 The preview shows the platform, pinned bootstrap versions and native package set. It makes no changes.
 
+### Bootstrap presentation preview
+
+The NovaLabs Bootstrap UI can be previewed independently of the
+production installer:
+
+```bash
+sh scripts/preview-bootstrap-ui.sh
+```
+
+To preview a specific host identity or disable animation:
+
+```bash
+sh scripts/preview-bootstrap-ui.sh --profile lovelace
+sh scripts/preview-bootstrap-ui.sh --profile proxmox --no-animation
+sh scripts/preview-bootstrap-ui.sh --plain
+```
+
+The presentation preview simulates execution stages without enrolling
+the host, installing applications, or modifying system configuration.
+
+The presentation engine is currently independent of `install.sh`.
+Production integration is planned for a subsequent implementation phase.
+
+See [Bootstrap UI](docs/bootstrap-ui.md) for presentation architecture,
+terminal compatibility, supported arguments, and regression testing.
+
 Apply only after the preview is understood:
 
 ```bash
@@ -1215,6 +1241,7 @@ The old repository remains useful as migration provenance and rollback/reference
 | [Application Catalog](docs/application-catalog.md) | Application declarations, profile eligibility, configuration ownership, theme integration, regression testing, and canary validation |
 | [Fleet Rollout and Acceptance](docs/fleet-rollout.md) | Fleet deployment results, host acceptance records, recovery provisions, and validation limitations |
 | [Migration Ledger](docs/migration-ledger.md) | Historical migration decisions, platform exceptions, and ownership boundaries |
+| [Bootstrap UI](docs/bootstrap-ui.md) | Terminal branding, host identity, presentation architecture, execution stage tracking, compatibility, and regression testing |
 
 The application and theme catalogs remain the authoritative sources
 of deployment policy. The documentation records their intended behavior,

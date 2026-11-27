@@ -169,5 +169,339 @@ sh "$PREVIEW" --invalid-option \
 
 pass "Invalid argument handling"
 
+# -------------------------------------------------------------------
+# Phase 3: Host identity and stage tracking
+# -------------------------------------------------------------------
+
+# 14. Architecture normalization.
+[[ "$(nl_ui_architecture x86_64)" == AMD64 ]] ||
+    fail "x86_64 normalization failed"
+
+[[ "$(nl_ui_architecture aarch64)" == ARM64 ]] ||
+    fail "aarch64 normalization failed"
+
+[[ "$(nl_ui_architecture riscv64)" == riscv64 ]] ||
+    fail "Unknown architecture was not preserved"
+
+pass "Architecture normalization"
+
+# 15. Repository revision fallback.
+[[ "$(nl_ui_revision "$TEST_ROOT")" == unknown ]] ||
+    fail "Missing repository revision fallback failed"
+
+pass "Repository revision fallback"
+
+# 16. Semantic plain-text indicators.
+NL_UI_COLOR_MODE=plain
+
+[[ "$(nl_ui_status success Example)" == "  [OK] Example" ]] ||
+    fail "Incorrect success indicator"
+
+[[ "$(nl_ui_status failure Example)" == "  [FAIL] Example" ]] ||
+    fail "Incorrect failure indicator"
+
+[[ "$(nl_ui_status warning Example)" == "  [WARN] Example" ]] ||
+    fail "Incorrect warning indicator"
+
+[[ "$(nl_ui_status running Example)" == "  [RUN] Example" ]] ||
+    fail "Incorrect running indicator"
+
+[[ "$(nl_ui_status skipped Example)" == "  [SKIP] Example" ]] ||
+    fail "Incorrect skipped indicator"
+
+[[ "$(nl_ui_status info Example)" == "  [INFO] Example" ]] ||
+    fail "Incorrect information indicator"
+
+if nl_ui_status invalid Example; then
+    fail "Unknown semantic state accepted"
+fi
+
+pass "Semantic status indicators"
+
+# 17. Reload authoritative palette after fallback testing.
+nl_ui_load_palette "$ROOT" ||
+    fail "Unable to reload theme catalog"
+
+NL_UI_PALETTE_READY=true
+
+for profile in \
+    any proxmox docker pihole ubuntulab \
+    lovelace worker1 zgx opnsense
+do
+    section="theme.hosts.$profile"
+
+    for key in display_name family; do
+        value="$(nl_ui_catalog_value \
+            "$NL_UI_CATALOG" "$section" "$key")" ||
+            fail "Missing $profile/$key"
+
+        [[ -n "$value" ]] ||
+            fail "Empty $profile/$key"
+    done
+
+    for key in shade_1 shade_2 shade_3 shade_4; do
+        value="$(nl_ui_catalog_value \
+            "$NL_UI_CATALOG" "$section" "$key")" ||
+            fail "Missing $profile/$key"
+
+        nl_ui_valid_hex "$value" ||
+            fail "Invalid $profile/$key"
+    done
+done
+
+pass "All nine host profile palettes"
+
+# 18. Plain host palette presentation.
+actual="$(nl_ui_host_palette \
+    '#111111' '#222222' '#333333' '#444444')"
+
+[[ "$actual" == *"#111111 #222222 #333333 #444444" ]] ||
+    fail "Incorrect plain host palette"
+
+pass "Plain host palette rendering"
+
+# 19. Invalid host palette omission.
+actual="$(nl_ui_host_palette \
+    '#111111' invalid '#333333' '#444444')"
+
+[[ -z "$actual" ]] ||
+    fail "Invalid host palette was rendered"
+
+pass "Invalid host palette omission"
+
+# 20. Elapsed-time calculations.
+[[ "$(nl_ui_elapsed 100 105)" == 5 ]] ||
+    fail "Incorrect elapsed time"
+
+[[ "$(nl_ui_elapsed 105 100)" == 0 ]] ||
+    fail "Backward clock change not handled"
+
+[[ "$(nl_ui_elapsed 0 105)" == 0 ]] ||
+    fail "Unavailable timestamp not handled"
+
+pass "Elapsed-time calculation"
+
+# 21. Invalid stage totals.
+for invalid in "" 0 01 -1 abc; do
+    if nl_ui_tracker_init "$invalid"; then
+        fail "Invalid stage total accepted: $invalid"
+    fi
+done
+
+pass "Stage total validation"
+
+# 22. Successful stage accounting.
+nl_ui_tracker_init 3
+
+nl_ui_stage_begin FIRST >/dev/null
+nl_ui_stage_pass "Completed" >/dev/null
+
+nl_ui_stage_begin SECOND >/dev/null
+nl_ui_stage_skip "Skipped" >/dev/null
+
+nl_ui_stage_begin THIRD >/dev/null
+nl_ui_stage_pass "Completed" >/dev/null
+
+[[ "$NL_UI_STAGE_NUMBER" == 3 ]] ||
+    fail "Incorrect stage number"
+
+[[ "$NL_UI_STAGE_COMPLETED" == 2 ]] ||
+    fail "Incorrect completed count"
+
+[[ "$NL_UI_STAGE_SKIPPED" == 1 ]] ||
+    fail "Incorrect skipped count"
+
+[[ "$NL_UI_STAGE_FAILED" == 0 ]] ||
+    fail "Unexpected failed count"
+
+actual="$(nl_ui_summary 0)"
+
+[[ "$actual" == *"BOOTSTRAP COMPLETE"* ]] ||
+    fail "Successful summary missing"
+
+pass "Successful stage accounting"
+
+# 23. Invalid stage transitions.
+if nl_ui_stage_begin OVERFLOW >/dev/null; then
+    fail "Stage count exceeded planned total"
+fi
+
+nl_ui_tracker_init 2
+
+if nl_ui_stage_pass Invalid >/dev/null; then
+    fail "Completed a stage that was not started"
+fi
+
+if nl_ui_stage_skip Invalid >/dev/null; then
+    fail "Skipped a stage that was not started"
+fi
+
+if nl_ui_stage_fail 42 Invalid >/dev/null; then
+    fail "Failed a stage that was not started"
+fi
+
+nl_ui_stage_begin FIRST >/dev/null
+
+if nl_ui_stage_begin SECOND >/dev/null; then
+    fail "Overlapping active stages accepted"
+fi
+
+if nl_ui_stage_fail 0 Invalid >/dev/null; then
+    fail "Zero failure status accepted"
+fi
+
+nl_ui_stage_pass Completed >/dev/null
+
+if nl_ui_stage_pass Duplicate >/dev/null; then
+    fail "Duplicate stage completion accepted"
+fi
+
+pass "Invalid stage transition rejection"
+
+# 24. Failed stage accounting.
+nl_ui_tracker_init 3
+
+nl_ui_stage_begin FIRST >/dev/null
+nl_ui_stage_pass Completed >/dev/null
+
+nl_ui_stage_begin SECOND >/dev/null
+nl_ui_stage_fail 42 Failed >/dev/null
+
+[[ "$NL_UI_STAGE_COMPLETED" == 1 ]] ||
+    fail "Incorrect completed count after failure"
+
+[[ "$NL_UI_STAGE_FAILED" == 1 ]] ||
+    fail "Incorrect failure count"
+
+[[ "$NL_UI_STAGE_ACTIVE" == false ]] ||
+    fail "Failed stage remained active"
+
+if nl_ui_stage_begin THIRD >/dev/null; then
+    fail "Execution continued after failed stage"
+fi
+
+actual="$(nl_ui_summary 42)"
+
+[[ "$actual" == *"BOOTSTRAP FAILED"* ]] ||
+    fail "Failure summary missing"
+
+[[ "$actual" =~ Exit[[:space:]]status[[:space:]]+42 ]] ||
+    fail "Original failure status missing"
+
+pass "Failed stage accounting"
+
+# 25. Incomplete execution summary.
+nl_ui_tracker_init 2
+
+nl_ui_stage_begin FIRST >/dev/null
+nl_ui_stage_pass Completed >/dev/null
+
+actual="$(nl_ui_summary 0)"
+
+[[ "$actual" == *"BOOTSTRAP INCOMPLETE"* ]] ||
+    fail "Incomplete execution reported as successful"
+
+pass "Incomplete execution detection"
+
+# 26. Standard host preview.
+sh "$PREVIEW" --plain --profile lovelace \
+    > "$TEST_ROOT/lovelace.log" 2>&1
+
+grep -Eq 'Stages processed[[:space:]]+8/8' \
+    "$TEST_ROOT/lovelace.log" ||
+    fail "Lovelace stage count incorrect"
+
+grep -Eq 'Completed[[:space:]]+7$' \
+    "$TEST_ROOT/lovelace.log" ||
+    fail "Lovelace completed count incorrect"
+
+grep -Eq 'Skipped[[:space:]]+1$' \
+    "$TEST_ROOT/lovelace.log" ||
+    fail "Lovelace skipped count incorrect"
+
+pass "Standard host preview"
+
+# 27. Proxmox Chronytop preview.
+sh "$PREVIEW" --plain --profile proxmox \
+    > "$TEST_ROOT/proxmox.log" 2>&1
+
+grep -Fq "Simulated Chronytop verification" \
+    "$TEST_ROOT/proxmox.log" ||
+    fail "Proxmox Chronytop stage missing"
+
+grep -Eq 'Completed[[:space:]]+8$' \
+    "$TEST_ROOT/proxmox.log" ||
+    fail "Proxmox completed count incorrect"
+
+pass "Proxmox Chronytop preview"
+
+# 28. Simulated failure preview.
+sh "$PREVIEW" --plain --profile zgx --simulate-failure \
+    > "$TEST_ROOT/failure.log" 2>&1
+
+grep -Fq "BOOTSTRAP FAILED" \
+    "$TEST_ROOT/failure.log" ||
+    fail "Simulated failure summary missing"
+
+grep -Eq 'Stages processed[[:space:]]+5/8' \
+    "$TEST_ROOT/failure.log" ||
+    fail "Simulated failure stage count incorrect"
+
+grep -Eq 'Exit status[[:space:]]+42$' \
+    "$TEST_ROOT/failure.log" ||
+    fail "Simulated failure status incorrect"
+
+if grep -Fq '[06/08]' "$TEST_ROOT/failure.log"; then
+    fail "Simulation continued after failure"
+fi
+
+pass "Simulated failure preview"
+
+# 29. OPNsense stage-only policy.
+sh "$PREVIEW" --plain --profile opnsense \
+    > "$TEST_ROOT/opnsense.log" 2>&1
+
+grep -Fq "OPNsense is excluded" \
+    "$TEST_ROOT/opnsense.log" ||
+    fail "OPNsense exclusion missing"
+
+if grep -Fq '[01/08]' "$TEST_ROOT/opnsense.log"; then
+    fail "OPNsense entered generic execution stages"
+fi
+
+pass "OPNsense stage-only preview"
+
+# 30. Invalid preview profiles.
+status=0
+
+sh "$PREVIEW" --profile nonexistent \
+    > "$TEST_ROOT/invalid-profile.log" 2>&1 ||
+    status=$?
+
+[[ "$status" == 2 ]] ||
+    fail "Invalid profile returned incorrect exit status"
+
+status=0
+
+sh "$PREVIEW" --profile \
+    > "$TEST_ROOT/missing-profile.log" 2>&1 ||
+    status=$?
+
+[[ "$status" == 2 ]] ||
+    fail "Missing profile returned incorrect exit status"
+
+pass "Preview profile argument validation"
+
+# 31. ANSI-free output across all preview scenarios.
+for logfile in \
+    lovelace.log proxmox.log failure.log opnsense.log
+do
+    if grep -q $'\033' "$TEST_ROOT/$logfile"; then
+        fail "ANSI escape found in $logfile"
+    fi
+done
+
+pass "ANSI-free execution summaries"
+
 printf '%s\n' '============================================================'
 printf 'PASS: All %s presentation checkpoints validated\n' "$passed"
