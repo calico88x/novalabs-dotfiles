@@ -360,6 +360,17 @@ if [ "$mode" = "preview" ]; then
     exit 0
 fi
 
+# Apply presentation is informational only. Keep infrastructure commands
+# outside guarded presentation functions to preserve shell error semantics.
+bootstrap_ui_call nl_ui_animate_logo
+bootstrap_ui_call nl_ui_heading "BOOTSTRAP APPLY"
+bootstrap_ui_call nl_ui_system_identity \
+    "$repo_root" "${PRETTY_NAME:-${ID:-unknown}}" apply
+bootstrap_ui_call nl_ui_field "Repository" "$repo_root"
+bootstrap_ui_call nl_ui_runtime_identity "$MISE_VERSION" "$CHEZMOI_VERSION"
+bootstrap_ui_call nl_ui_tracker_init 8
+bootstrap_ui_call nl_ui_stage_begin "BOOTSTRAP RUNTIME"
+
 # A fetcher is required before system packages can be converged.
 if command -v curl >/dev/null 2>&1; then
     fetch_installer() {
@@ -394,13 +405,18 @@ fi
 "$mise_bin" --version | grep -F "$MISE_VERSION" >/dev/null ||
     die "installed Mise version does not match $MISE_VERSION"
 
+bootstrap_ui_call nl_ui_stage_pass "Pinned Mise runtime verified."
+
 chezmoi() {
     "$mise_bin" x "aqua:twpayne/chezmoi@${CHEZMOI_VERSION}" -- chezmoi "$@"
 }
 
+bootstrap_ui_call nl_ui_stage_begin "CHEZMOI ENROLLMENT"
 printf '==> Enrolling ChezMoi from %s\n' "$repo_root"
 chezmoi -S "$repo_root" init
+bootstrap_ui_call nl_ui_stage_pass "ChezMoi enrollment completed."
 
+bootstrap_ui_call nl_ui_stage_begin "HOST POLICY VALIDATION"
 # Render and execute the validator before any sudo/system mutation.
 validator=$(mktemp)
 trap 'rm -f "$validator" "${chronytop_tmp:-}"' EXIT HUP INT TERM
@@ -451,6 +467,8 @@ case "$profile" in
         fi
         ;;
 esac
+
+bootstrap_ui_call nl_ui_stage_pass "Host policy validated."
 
 # Generic Linux hosts install only required toolchain prerequisites.
 # Named hosts continue using the existing Debian-family baseline.

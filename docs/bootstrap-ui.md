@@ -300,12 +300,68 @@ Preview exits before runtime downloads, enrollment or infrastructure
 execution. Apply-mode commands and package policies are unchanged.
 The descriptive plan must remain synchronized with the actual workflow.
 
+### Apply runtime and enrollment instrumentation
+
+Phase 4.06 adds optional apply startup branding, actual system and runtime
+identity, and an eight-stage tracker. The first three stages are instrumented
+around existing commands, without wrapping those commands in presentation
+functions or conditional execution contexts.
+
+| Stage | Success boundary |
+|---|---|
+| 01 — Bootstrap runtime | Pinned Mise executable and version verification succeed |
+| 02 — ChezMoi enrollment | Native `chezmoi init` returns successfully |
+| 03 — Host policy validation | Validator, template resolution and existing Docker checks succeed |
+
+Native command output and prompts are retained. Explicit presentation
+failures disable subsequent guarded calls without changing infrastructure
+execution. Failed commands cannot reach the corresponding success call.
+The existing shell exit and temporary-file trap behavior is not changed
+in this checkpoint. Failure summaries, signal handling, authoritative host
+palette rendering and stages 04–08 remain pending. No final tracker summary
+is emitted until all stages and lifecycle handling are integrated.
+
+The development-only `scripts/test-bootstrap-runtime.sh` suite copies the
+actual installer prefix into a temporary repository, cuts execution off
+before native package convergence, and uses fake Mise, ChezMoi, fetcher
+and Docker commands with an isolated HOME. The test cannot validate the
+later execution stages or a live installation. It verifies command order,
+selected failure statuses, native output, presentation failure containment
+and existing validator cleanup. Run it as a normal user on Linux:
+
+```bash
+bash scripts/test-bootstrap-runtime.sh
+```
+
+All 12 apply-prefix checkpoints passed on AMD64 Ubuntu WSL:
+
+| Checkpoint | Result |
+|---|---|
+| Existing pinned runtime and tracked apply prefix | Passed |
+| Fresh pinned runtime installation fixture | Passed |
+| Apply prefix without optional presentation | Passed |
+| Startup rendering failure preserves execution | Passed |
+| Stage reporting failure preserves execution | Passed |
+| Runtime installer failure preserves exit status | Passed |
+| Runtime version mismatch stops enrollment | Passed |
+| Enrollment failure preserves exit status | Passed |
+| Validator rendering failure preserves exit status | Passed |
+| Host validator failure preserves exit status | Passed |
+| Host profile resolution failure preserves exit status | Passed |
+| Docker prerequisite failure retains existing guard | Passed |
+
+These results validate the mocked apply prefix only. Native enrollment
+output and diagnostics are retained; real interactive enrollment and live
+apply remain unvalidated.
+
 ### Integration checkpoint
 
 Phase 4.05 validates enhanced production preview rendering and native
 fallback. Phase 4.03 and 4.04 previously validated initialization and CLI
-propagation respectively. Apply-mode presentation, authoritative host
-identity, exit-status preservation and signal cleanup remain pending.
+propagation respectively. Phase 4.06 instruments apply startup and stages
+01–03; isolated regression acceptance is complete. Remaining apply-stage presentation,
+authoritative host identity, full exit-status handling and signal cleanup
+remain pending.
 No new mandatory runtime dependencies are introduced.
 
 ## Terminal compatibility
@@ -753,7 +809,7 @@ sh -n scripts/preview-bootstrap-ui.sh
 
 ### Regression coverage
 
-The bootstrap presentation implementation is validated by four
+The bootstrap presentation implementation is validated by five
 complementary regression suites.
 
 | Suite | Checkpoints | Result |
@@ -762,7 +818,8 @@ complementary regression suites.
 | Pseudo-terminal regression | 17 | Passed |
 | Production presentation adapter | 11 | Passed |
 | Production installer integration | 24 | Passed |
-| **Total** | **88** | **Passed** |
+| Apply runtime integration | 12 | Passed |
+| **Total** | **100** | **Passed** |
 
 Presentation regression tests validate branding, rendering,
 palette initialization, system identity, host palettes, stage
@@ -776,6 +833,9 @@ presentation calls and state preservation.
 
 Installer integration tests validate the actual production entry
 point in isolated, non-mutating preview scenarios.
+
+Apply runtime tests validate the first three stages using command shims
+and a deliberate cutoff before native package convergence.
 
 ### Pseudo-terminal regression testing
 
@@ -920,7 +980,7 @@ The suite does not invoke infrastructure apply operations.
 
 ### Combined regression validation
 
-Run all four regression suites from a normal-user Linux
+Run all five regression suites from a normal-user Linux
 development environment:
 
 ```bash
@@ -928,9 +988,10 @@ bash scripts/test-bootstrap-ui.sh
 python3 scripts/test-bootstrap-ui-pty.py
 bash scripts/test-bootstrap-adapter.sh
 bash scripts/test-bootstrap-integration.sh
+bash scripts/test-bootstrap-runtime.sh
 ```
 
-The combined production preview checkpoint contains 88 passing
+The combined runtime integration checkpoint contains 100 passing
 regression checks.
 
 Python remains a development-only dependency.
@@ -945,7 +1006,8 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Pseudo-terminal regression | 17/17 passed |
 | Presentation adapter regression | 11/11 passed |
 | Production installer integration | 24/24 passed |
-| **Combined regression coverage** | **88/88 passed** |
+| Apply runtime integration | 12/12 passed |
+| **Combined regression coverage** | **100/100 passed** |
 | Truecolor animation | Passed |
 | ANSI 256-color animation | Passed |
 | Static presentation | Passed |
@@ -959,14 +1021,15 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 
 The current acceptance record consists of 36 shell presentation
 checkpoints, 17 pseudo-terminal checkpoints, 11 presentation
-adapter checkpoints and 24 production installer integration
-checkpoints.
+adapter checkpoints, 24 production installer integration checkpoints
+and 12 apply runtime integration checkpoints.
 
-All 88 checkpoints passed on the AMD64 WSL development
+All 100 checkpoints passed on the AMD64 WSL development
 environment.
 
-These results establish presentation, initialization, CLI and production
-preview acceptance, not production apply acceptance.
+These results establish presentation, initialization, CLI, production
+preview and isolated apply-prefix acceptance, not live production apply
+acceptance.
 
 ## Safety boundaries
 
@@ -1046,7 +1109,7 @@ not simulate execution-stage timings.
 | 4.03 — Optional presentation initialization and fallback | Validated |
 | 4.04 — Presentation CLI arguments | Validated |
 | 4.05 — Production preview presentation | Validated |
-| 4.06 — Runtime and enrollment stages | Pending |
+| 4.06 — Runtime and enrollment stages | Validated (isolated apply prefix) |
 | 4.07 — Authoritative host identity resolution | Pending |
 | 4.08 — Native prerequisites and configuration | Pending |
 | 4.09 — Applications and Chronytop | Pending |
@@ -1071,7 +1134,13 @@ help output and preservation of existing safety guards.
 The production preview checkpoint expands coverage to 88 passing checks
 on AMD64 Ubuntu WSL. Production animation, static color, plain output,
 NO_COLOR, CI compatibility and native recovery are validated. Interactive
-preview invocations confirm expected content; no apply was performed.
+preview invocations confirm expected content; no live apply was performed.
+
+The runtime and enrollment checkpoint expands combined regression coverage
+to 100 passing checks on AMD64 Ubuntu WSL. Apply startup and stages 01–03
+are validated with isolated command fixtures, including selected failure
+statuses and explicit presentation failure containment. Stages 04–08 and
+full lifecycle handling remain pending.
 
 The branding foundation was introduced in commit `9307275` and merged into `main` at `621e8abc3599630a00edb8a3aaf596f23a85304d`.
 
