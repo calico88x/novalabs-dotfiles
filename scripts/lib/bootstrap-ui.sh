@@ -1,4 +1,3 @@
-
 #!/bin/sh
 # NovaLabs bootstrap presentation library.
 # POSIX shell compatible. Source this file; do not execute directly.
