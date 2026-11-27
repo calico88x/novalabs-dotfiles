@@ -21,3 +21,31 @@ scripts/**
 .config/lazydocker/
 .config/lazydocker/**
 {{- end }}
+
+# Shared tui-kit theme.
+# Deploy when at least one compatible application is eligible.
+{{- $tuiKitEnabled := false }}
+{{- range $name := list "tui-cert" "tui-disk" "tui-systemd" "tui-traffic" "tui-cron" "tui-ssh" }}
+    {{- $app := index $root.apps $name }}
+    {{- if eq (includeTemplate "apps/selection" (dict "root" $root "app" $app) | trim) "true" }}
+        {{- $tuiKitEnabled = true }}
+    {{- end }}
+{{- end }}
+{{- if not $tuiKitEnabled }}
+.config/novalab/themes/tui-kit.toml
+{{- end }}
+
+# K9s native skin.
+{{- if ne (includeTemplate "apps/selection" (dict "root" $root "app" .apps.k9s) | trim) "true" }}
+.config/k9s/skins/novalab.yaml
+{{- end }}
+
+# LazyJournal initial configuration.
+{{- if ne (includeTemplate "apps/selection" (dict "root" $root "app" .apps.lazyjournal) | trim) "true" }}
+.config/lazyjournal/config.yml
+{{- end }}
+
+# Network Doctor initial theme preference.
+{{- if ne (includeTemplate "apps/selection" (dict "root" $root "app" (index .apps "network-doctor")) | trim) "true" }}
+.config/netdoc/theme
+{{- end }}

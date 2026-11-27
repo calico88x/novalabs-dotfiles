@@ -3,10 +3,24 @@ schema_version = 2
 [theme.shared]
 text_light = "#F7F7FB"
 text_dark = "#161923"
-success = "#A6E3A1"
-error = "#F38BA8"
+success = "#50FA7B"
+error = "#FF5555"
 root = "#FF6B6B"
-warning = "#F9E2AF"
+warning = "#ff7f3f"
+
+# Shared terminal application surfaces and supplementary colors.
+# Host-specific accents are resolved from theme.hosts.
+[theme.tui]
+surface = "#242838"
+surface_dark = "#10121A"
+selection = "#34394A"
+muted = "#A0A4B8"
+cyan = "#8BE9FD"
+orange = "#FF9B3E"
+
+# Native application-wide theme preferences.
+[theme.preferences]
+network_doctor = "contrast"
 
 [theme.btop_graph]
 lime = "#b8f500"
@@ -33,6 +47,7 @@ shade_1 = "#BD93F9"
 shade_2 = "#44475A"
 shade_3 = "#8BE9FD"
 shade_4 = "#FF79C6"
+lazyjournal_accent = "magenta"
 
 [theme.hosts.proxmox]
 display_name = "Proxmox"
@@ -42,6 +57,7 @@ shade_1 = "#c45f00"
 shade_2 = "#ff7b00"
 shade_3 = "#ff922c"
 shade_4 = "#ff9b3e"
+lazyjournal_accent = "yellow"
 
 [theme.hosts.docker]
 display_name = "Docker LXC"
@@ -51,6 +67,7 @@ shade_1 = "#1f77ba"
 shade_2 = "#3297e5"
 shade_3 = "#41adff"
 shade_4 = "#5ab7ff"
+lazyjournal_accent = "cyan"
 
 [theme.hosts.pihole]
 display_name = "Pi-hole"
@@ -60,6 +77,7 @@ shade_1 = "#c12146"
 shade_2 = "#f4194c"
 shade_3 = "#ec466d"
 shade_4 = "#f8547a"
+lazyjournal_accent = "red"
 
 [theme.hosts.ubuntulab]
 display_name = "UbuntuLab"
@@ -69,6 +87,7 @@ shade_1 = "#bd4500"
 shade_2 = "#ff5e00"
 shade_3 = "#ff7829"
 shade_4 = "#ff823a"
+lazyjournal_accent = "yellow"
 
 [theme.hosts.opnsense]
 display_name = "OPNsense"
@@ -87,6 +106,7 @@ shade_1 = "#2e8500"
 shade_2 = "#41b900"
 shade_3 = "#4fd805"
 shade_4 = "#5ff70d"
+lazyjournal_accent = "green"
 
 [theme.hosts.lovelace]
 display_name = "Lovelace"
@@ -96,6 +116,7 @@ shade_1 = "#471B65"
 shade_2 = "#6C2999"
 shade_3 = "#9A47D1"
 shade_4 = "#af63e1"
+lazyjournal_accent = "magenta"
 
 [theme.hosts.worker1]
 display_name = "Worker node"
@@ -105,3 +126,4 @@ shade_1 = "#b0a400"
 shade_2 = "#ffdd00"
 shade_3 = "#ffec20"
 shade_4 = "#ffe645"
+lazyjournal_accent = "yellow"

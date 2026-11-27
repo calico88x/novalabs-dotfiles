@@ -110,7 +110,7 @@ The application catalog includes infrastructure administration, diagnostics, and
 | tui-systemd | `tui-systemd` | Systemd service inspection and management | All managed Linux profiles |
 | tui-traffic | `tui-traffic` | Network traffic inspection | All managed Linux profiles |
 | tui-cron | `tui-cron` | Scheduled task inspection and management | All managed Linux profiles |
-| tui-ssh | `tui-ssh` | SSH connection management | All managed Linux profiles |
+| tui-ssh | `tui-ssh` | SSH server configuration and administration | All managed Linux profiles |
 
 Exact application versions and backend identifiers are maintained exclusively in `apps.toml`.
 
@@ -195,6 +195,229 @@ When an application's configuration should only exist on eligible hosts, `.chezm
 
 Application-specific exclusion paths remain in `.chezmoiignore.tmpl`.
 
+## Infrastructure TUI themes
+
+Infrastructure TUI appearance is derived from the centralized theme catalog:
+
+```text
+.chezmoidata/theme.toml
+```
+
+Application installation and configuration eligibility remain controlled by the application catalog and shared application selector.
+
+Theme templates consume host-specific palette data and shared interface colors without duplicating application enrollment policy.
+
+### Theme catalog structure
+
+| Catalog section | Responsibility |
+|---|---|
+| `theme.shared` | Shared foreground, background, and semantic colors |
+| `theme.tui` | Common interface surfaces and supplementary colors |
+| `theme.hosts.<profile>` | Host-specific visual identity and application color mappings |
+| `theme.preferences` | Shared application-specific appearance preferences |
+
+The existing theme catalog schema version is retained because these additions are backward-compatible.
+
+Host-specific accents are derived from the selected ChezMoi profile, not from the runtime hostname or the infrastructure endpoint an application connects to.
+
+### Application theme strategies
+
+Not every terminal application supports the same customization capabilities. NovaLabs uses native application configuration rather than requiring patched binaries or application-specific launch wrappers.
+
+| Application | Theme strategy | Configuration ownership |
+|---|---|---|
+| tui-cert | Shared tui-kit RGB palette | Managed |
+| tui-disk | Shared tui-kit RGB palette | Managed |
+| tui-systemd | Shared tui-kit RGB palette | Managed |
+| tui-traffic | Shared tui-kit RGB palette | Managed |
+| tui-cron | Shared tui-kit RGB palette | Managed |
+| tui-ssh | Shared tui-kit RGB palette | Managed |
+| K9s | Native host-specific RGB skin | Managed skin only |
+| LazyJournal | Native ANSI color configuration | Create-only |
+| Network Doctor | Native `contrast` preset | Create-only |
+| Dive | Native appearance | Unmanaged |
+
+All theme configuration is managed at the user level. Theme integration does not grant privileges or change the configuration of underlying system services.
+
+### Configuration paths
+
+| Repository source | Deployment target |
+|---|---|
+| `private_dot_config/novalab/themes/tui-kit.toml.tmpl` | `~/.config/novalab/themes/tui-kit.toml` |
+| `private_dot_config/k9s/skins/novalab.yaml.tmpl` | `~/.config/k9s/skins/novalab.yaml` |
+| `private_dot_config/lazyjournal/create_config.yml.tmpl` | `~/.config/lazyjournal/config.yml` |
+| `private_dot_config/netdoc/create_theme.tmpl` | `~/.config/netdoc/theme` |
+
+Configuration eligibility is evaluated using the shared application selector in `.chezmoiignore.tmpl`.
+
+The shared tui-kit palette is deployed when at least one compatible application is eligible.
+
+K9s, LazyJournal, and Network Doctor configuration files are deployed only when their respective applications are eligible.
+
+OPNsense is excluded from infrastructure TUI theme deployment.
+
+### Configuration ownership
+
+Managed theme files are rendered from the repository and converged through ChezMoi. Changes to these files should be made in the repository rather than directly on individual hosts.
+
+Create-only files use ChezMoi's `create_` attribute. They are initialized when absent but existing files and subsequent user modifications are preserved.
+
+Changes to LazyJournal or Network Doctor defaults therefore affect new configurations rather than automatically overwriting existing preferences.
+
+Configuration exclusion does not remove previously deployed files. Retiring obsolete configuration requires a separate, explicitly reviewed cleanup operation.
+
+### Shell activation
+
+The shared Bash environment activates managed themes when their corresponding configuration files are readable.
+
+| Environment variable | Default |
+|---|---|
+| `TUI_THEME` | `${XDG_CONFIG_HOME}/novalab/themes/tui-kit.toml` |
+| `K9S_SKIN` | `novalab` |
+
+Existing non-empty environment overrides are preserved.
+
+Empty or unset variables receive the NovaLabs defaults when the corresponding files are available.
+
+If a managed theme file is missing, the activation logic does not assign its default environment variable or clear an existing value.
+
+No application-specific aliases or executable wrappers are required.
+
+The activation logic respects `XDG_CONFIG_HOME`. However, ChezMoi currently deploys these files under `~/.config`. Custom XDG configuration locations require separately arranged file placement.
+
+Start a fresh login shell after reconciliation to activate the managed environment.
+
+```bash
+exec bash -l
+```
+
+### Shared tui-kit palette
+
+The six infrastructure applications maintained by the tui-tools project share a single generated palette compatible with the tui-kit Omarchy theme format.
+
+The palette combines host-specific accent colors with shared foreground, background, surface, selection, and semantic colors.
+
+Applications load the palette through the `TUI_THEME` environment variable. An explicit application theme selection can be used for temporary appearance overrides.
+
+The shared palette is managed as one configuration file to keep compatible applications visually consistent.
+
+### K9s
+
+K9s uses a native skin generated from the selected host's palette.
+
+Only the NovaLabs skin is managed. General K9s configuration, context configuration, Kubernetes credentials, plugins, and runtime state remain user-owned.
+
+The skin is selected through `K9S_SKIN=novalab` unless a non-empty environment override already exists.
+
+The skin uses host-specific accents for headings, focused borders, normal resource text, and normal resource selection backgrounds.
+
+#### Status-aware selection
+
+K9s v0.51.0 derives selected resource row backgrounds from the selected cell's color.
+
+The configured `cursorBgColor` is applied during style initialization but can be overridden by the resource selection handler.
+
+NovaLabs preserves this native status-aware behavior rather than modifying the K9s binary.
+
+In this release, `frame.status.newColor` controls the standard resource color, including healthy running pods.
+
+| Resource color role | NovaLabs palette |
+|---|---|
+| Standard and modified resources | Host accent |
+| Added and initializing resources | Shared success |
+| Pending and container creation | Shared warning |
+| Invalid and error resources | Shared error |
+| Highlighted resources | Shared warning |
+| Completed and terminating resources | Shared muted |
+
+Consequently, selecting a healthy running pod uses the host accent, while rows assigned warning or error colors retain their corresponding semantic selection backgrounds.
+
+The selected row foreground uses the shared dark background color.
+
+The relevant upstream implementation was inspected at the pinned K9s v0.51.0 release:
+
+- `internal/ui/table.go`
+- `internal/ui/select_table.go`
+- `internal/ui/config.go`
+- `internal/render/pod.go`
+- `internal/model1/color.go`
+
+Revalidate these mappings when upgrading K9s because native rendering behavior may change between releases.
+
+The skin follows the local NovaLabs host identity, not the identity of the connected Kubernetes cluster.
+
+### LazyJournal
+
+LazyJournal v0.8.7 supports named terminal colors rather than arbitrary RGB theme values.
+
+NovaLabs provides an initial configuration using the closest supported named color for each managed host.
+
+| Profile | Accent |
+|---|---|
+| `any` | magenta |
+| `proxmox` | yellow |
+| `docker` | cyan |
+| `pihole` | red |
+| `ubuntulab` | yellow |
+| `lovelace` | magenta |
+| `worker1` | yellow |
+| `zgx` | green |
+
+Actual displayed colors depend on the terminal's ANSI palette.
+
+Only interface color preferences are initialized. Other settings retain native application defaults.
+
+The configuration is create-only to preserve subsequent application preferences and existing user configuration.
+
+LazyJournal searches for configuration in the following order:
+
+1. Current working directory.
+2. Executable directory.
+3. `/etc/lazyjournal/config.yml`.
+4. `~/.config/lazyjournal/config.yml`.
+
+Higher-priority configuration files may take precedence over the NovaLabs-generated file.
+
+The pinned release does not use `XDG_CONFIG_HOME` for this configuration lookup.
+
+### Network Doctor
+
+Network Doctor v2.2.2 supports native theme presets rather than arbitrary host-specific palettes.
+
+NovaLabs initializes the `contrast` preset on all eligible hosts.
+
+This preference provides a consistent, high-contrast diagnostic interface independent of the host palette.
+
+The initial preference is create-only. Users may subsequently select another native theme using the application's theme picker (`T`).
+
+Existing preferences are preserved during reconciliation.
+
+### Dive
+
+Dive v0.13.1 retains its native appearance.
+
+The pinned release does not expose a documented custom color palette through its native configuration.
+
+NovaLabs does not introduce a patched binary or terminal-wide color override solely to customize Dive.
+
+### Runtime validation
+
+All nine customized applications successfully loaded their native NovaLabs appearance during isolated AMD64 runtime testing.
+
+The six tui-kit applications were tested using their demo modes without privilege escalation.
+
+LazyJournal and Network Doctor were tested using temporary user configuration directories.
+
+K9s was tested against the Lovelace cluster from Ubuntu WSL using an explicit Kubernetes context and application read-only mode. The existing kubeconfig was referenced directly without duplicating credentials.
+
+K9s native logs confirmed loading the generated NovaLabs skin. The final host-accent selection behavior was visually confirmed.
+
+Warning and error color propagation was verified through pinned upstream source inspection and configuration assertions. Unhealthy workloads were not intentionally created in Lovelace for cosmetic testing.
+
+These tests complement the native AMD64 and ARM64 installation and executable smoke tests. They do not constitute a complete interactive validation of every application on both architectures.
+
+Fleet reconciliation and host-specific runtime validation remain separate deployment activities.
+
 ## Existing ownership exceptions
 
 - ZGX retains its externally managed GPU-enabled btop installation.
@@ -213,10 +436,17 @@ Application-specific exclusion paths remain in `.chezmoiignore.tmpl`.
 
 ## Validation
 
-Requirements:
+### Development requirements
 
 - Python 3.11 or newer.
 - ChezMoi available on PATH.
+- PyYAML available in the Python development environment.
+- Bash for shell environment regression testing.
+- A Linux environment or WSL for running the shell regression suite.
+
+PyYAML is a development and testing dependency only. It is not required for normal NovaLabs host reconciliation.
+
+### Application catalog validation
 
 From the repository root:
 
@@ -238,21 +468,91 @@ The test validates:
 - ZGX btop preservation.
 - OPNsense application exclusion.
 
-Application policy assertions are intentionally independent of the
-application catalog. They detect unintended enrollment changes even
-when the rendered Mise configuration correctly follows the catalog.
+Application policy assertions are intentionally independent of the application catalog. They detect unintended enrollment changes even when the rendered Mise configuration correctly follows the catalog.
 
 Version pins are not duplicated in these policy assertions.
 
-The validation script does not install applications or apply host configuration.
+### Theme catalog validation
+
+```bash
+python scripts/test-theme-catalog.py
+```
+
+The test validates:
+
+- Centralized theme catalog structure and color values.
+- Host palette coverage.
+- Native LazyJournal color mappings.
+- Network Doctor's initial theme preference.
+- Theme configuration eligibility.
+- Agreement between application enrollment and configuration deployment.
+- Independent configuration eligibility expectations.
+- Deterministic theme rendering.
+- Generated configuration formatting.
+- Native TOML and YAML parsing.
+- Shared tui-kit palette mappings.
+- K9s interface and semantic color assignments.
+- K9s host-specific cursor and resource color mappings.
+- LazyJournal initial interface configuration.
+- Network Doctor preference file content.
+- OPNsense theme configuration exclusion.
+
+The current validation baseline covers ten enrollment scenarios and thirty eligible theme configurations.
+
+### Shell environment validation
+
+From a Linux shell or WSL, run:
+
+```bash
+bash scripts/test-theme-env.sh
+```
+
+The test uses temporary configuration directories and isolated shell environments to validate eight activation scenarios:
+
+| Scenario | Expected behavior |
+|---|---|
+| Neither theme file exists | No managed theme defaults assigned |
+| Only tui-kit theme exists | Activate `TUI_THEME` |
+| Only K9s skin exists | Activate `K9S_SKIN` |
+| Both theme files exist | Activate both variables |
+| Explicit overrides | Preserve existing non-empty values |
+| Empty variables | Assign eligible NovaLabs defaults |
+| Custom XDG configuration path | Resolve themes from the supplied path |
+| Repeated initialization | Stable environment without duplicate PATH changes |
+
+The test also checks Bash syntax and removes its temporary test directory on exit.
+
+### Configuration ownership validation
+
+Create-only configuration behavior was separately validated for LazyJournal and Network Doctor using temporary ChezMoi source and destination environments.
+
+The tests confirmed that missing configuration files are initialized and existing user-modified files are preserved during subsequent reconciliation.
+
+### Validation boundaries
+
+The automated regression suites do not install applications, apply host configuration, or connect to Kubernetes clusters.
+
+Native application runtime testing remains a separate validation activity.
+
+Successful template parsing does not guarantee that an application consumes every supported configuration property. Verify native application behavior when changing theme configuration or upgrading pinned application versions.
+
+Before committing application or theme changes, run the applicable regression suites and review the Git diff.
+
+```bash
+python scripts/test-app-catalog.py
+python scripts/test-theme-catalog.py
+bash scripts/test-theme-env.sh
+git diff --check
+```
 
 ## Application updates
 
 1. Create a feature branch.
 2. Verify the upstream release, architecture support, and installation backend.
 3. Update the exact version in `apps.toml`.
-4. Update application configuration when required.
-5. Run the catalog validation script.
+4. Review native configuration and theme compatibility against the pinned release.
+5. Update application configuration when required and run the applicable
+   application, theme, and shell environment regression suites.
 6. Review the Git diff.
 7. Commit and push the change to Forgejo.
 8. Validate on representative Linux hosts before fleet deployment.

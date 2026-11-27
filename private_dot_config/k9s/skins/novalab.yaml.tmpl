@@ -1,0 +1,118 @@
+{{- $host := index .theme.hosts .profile -}}
+{{- $shared := .theme.shared -}}
+{{- $tui := .theme.tui -}}
+# Generated from .chezmoidata/theme.toml. Do not edit directly.
+# NovaLabs {{ $host.display_name }} K9s skin.
+# Based on the K9s v0.51.0 native skin structure.
+
+# Core interface colors.
+foreground: &foreground "{{ $shared.text_light }}"
+background: &background "{{ $shared.text_dark }}"
+surface: &surface "{{ $tui.surface }}"
+selection: &selection "{{ $tui.selection }}"
+muted: &muted "{{ $tui.muted }}"
+
+# Host identity.
+accent: &accent "{{ $host.shade_4 }}"
+
+# Semantic colors.
+success: &success "{{ $shared.success }}"
+error: &error "{{ $shared.error }}"
+warning: &warning "{{ $shared.warning }}"
+
+k9s:
+  body:
+    fgColor: *foreground
+    bgColor: *background
+    logoColor: *accent
+
+  prompt:
+    fgColor: *foreground
+    bgColor: *background
+    suggestColor: *accent
+
+  info:
+    fgColor: *accent
+    sectionColor: *foreground
+
+  dialog:
+    fgColor: *foreground
+    bgColor: *background
+    buttonFgColor: *foreground
+    buttonBgColor: *surface
+    buttonFocusFgColor: *background
+    buttonFocusBgColor: *accent
+    labelFgColor: *accent
+    fieldFgColor: *foreground
+
+  frame:
+    border:
+      fgColor: *muted
+      focusColor: *accent
+
+    menu:
+      fgColor: *foreground
+      keyColor: *accent
+      numKeyColor: *accent
+
+    crumbs:
+      fgColor: *foreground
+      bgColor: *surface
+      activeColor: *selection
+
+    status:
+      newColor: *accent
+      modifyColor: *accent
+      addColor: *success
+      pendingColor: *warning
+      errorColor: *error
+      highlightColor: *warning
+      killColor: *muted
+      completedColor: *muted
+
+    title:
+      fgColor: *foreground
+      bgColor: *surface
+      highlightColor: *warning
+      counterColor: *foreground
+      filterColor: *foreground
+
+  views:
+    charts:
+      bgColor: *background
+      defaultDialColors:
+        - *accent
+        - *error
+      defaultChartColors:
+        - *accent
+        - *error
+
+    table:
+      fgColor: *foreground
+      bgColor: *background
+      cursorFgColor: *background
+      cursorBgColor: *accent
+      header:
+        fgColor: *accent
+        bgColor: *background
+        sorterColor: *accent
+
+    xray:
+      fgColor: *foreground
+      bgColor: *background
+      cursorColor: *selection
+      graphicColor: *accent
+      showIcons: false
+
+    yaml:
+      keyColor: *accent
+      colonColor: *muted
+      valueColor: *foreground
+
+    logs:
+      fgColor: *foreground
+      bgColor: *background
+      indicator:
+        fgColor: *foreground
+        bgColor: *surface
+        toggleOnColor: *success
