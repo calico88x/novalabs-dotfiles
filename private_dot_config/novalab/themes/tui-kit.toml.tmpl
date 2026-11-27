@@ -1,0 +1,33 @@
+{{- $host := index .theme.hosts .profile -}}
+{{- $shared := .theme.shared -}}
+{{- $tui := .theme.tui -}}
+# Generated from .chezmoidata/theme.toml. Do not edit directly.
+# NovaLabs {{ $host.display_name }} shared TUI theme.
+# Compatible with the tui-kit Omarchy palette format.
+
+mode = "dark"
+
+# Core interface colors.
+background = "{{ $shared.text_dark }}"
+foreground = "{{ $shared.text_light }}"
+bright_foreground = "{{ $shared.text_light }}"
+
+# Shared interface surfaces.
+lighter_background = "{{ $tui.surface }}"
+dark_background = "{{ $tui.surface_dark }}"
+selection = "{{ $tui.selection }}"
+muted = "{{ $tui.muted }}"
+
+# Host-specific identity.
+accent = "{{ $host.shade_4 }}"
+blue = "{{ $host.shade_3 }}"
+magenta = "{{ $host.shade_4 }}"
+
+# Shared semantic colors.
+red = "{{ $shared.error }}"
+green = "{{ $shared.success }}"
+yellow = "{{ $shared.warning }}"
+
+# Supplementary palette colors.
+cyan = "{{ $tui.cyan }}"
+orange = "{{ $tui.orange }}"

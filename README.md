@@ -110,6 +110,34 @@ See the [Infrastructure TUI documentation](docs/application-catalog.md#infrastru
 for runtime requirements, validation results, release integrity
 considerations, and ownership migration requirements.
 
+### Infrastructure TUI themes
+
+Infrastructure TUI appearance is derived from the centralized
+`.chezmoidata/theme.toml` catalog and the selected host profile.
+
+| Applications | Appearance | Configuration ownership |
+|---|---|---|
+| Six tui-kit applications | Shared host-specific RGB palette | Managed |
+| K9s | Host-specific RGB skin with status-aware selection | Managed skin only |
+| LazyJournal | Host-specific named terminal colors | Create-only |
+| Network Doctor | Native `contrast` preset | Create-only |
+| Dive | Native appearance | Unmanaged |
+
+The shared Bash environment automatically activates the managed
+tui-kit palette and K9s skin when their configuration files exist.
+Explicit non-empty environment overrides are preserved.
+
+LazyJournal and Network Doctor preferences are initialized only when
+absent, preserving existing configurations and subsequent user changes.
+
+All nine customized applications have passed native theme-loading and
+visual validation on AMD64. Installation and executable smoke tests
+have separately passed on AMD64 and ARM64.
+
+See [Infrastructure TUI themes](docs/application-catalog.md#infrastructure-tui-themes)
+for configuration paths, palette mappings, ownership boundaries,
+activation behavior, and runtime validation details.
+
 ## System map
 
 ```mermaid
@@ -241,7 +269,9 @@ ChezMoi's enrollment configuration is explicitly changed.
 │   ├── application-catalog.md
 │   └── migration-ledger.md
 ├── scripts/
-│   └── test-app-catalog.py
+│   ├── test-app-catalog.py
+│   ├── test-theme-catalog.py
+│   └── test-theme-env.sh
 ├── private_dot_config/
 │   ├── btop/
 │   ├── mise/
@@ -249,6 +279,13 @@ ChezMoi's enrollment configuration is explicitly changed.
 │   ├── fastfetch/
 │   ├── lazygit/
 │   ├── lazydocker/
+│   ├── k9s/
+│   │   └── skins/
+│   ├── lazyjournal/
+│   ├── netdoc/
+│   ├── novalab/
+│   │   ├── bash/
+│   │   └── themes/
 │   └── ...
 ├── modify_dot_bashrc
 ├── modify_dot_gitconfig
@@ -271,6 +308,12 @@ Important source paths:
 - `.chezmoidata/apps.toml` — portable application declarations and exact version pins
 - `.chezmoitemplates/apps/selection` — shared application eligibility selector
 - `scripts/test-app-catalog.py` — automated application catalog validation
+- `private_dot_config/novalab/themes/` — shared infrastructure TUI palettes
+- `private_dot_config/k9s/skins/` — host-specific K9s skins
+- `private_dot_config/lazyjournal/` — initial LazyJournal interface configuration
+- `private_dot_config/netdoc/` — initial Network Doctor theme preference
+- `scripts/test-theme-catalog.py` — automated theme catalog validation
+- `scripts/test-theme-env.sh` — shell theme activation regression tests
 
 ## Bootstrap a new Linux host
 
@@ -506,6 +549,10 @@ Common mappings:
 | `private_dot_config/nvim/` | `~/.config/nvim/` |
 | `dot_tmux.conf` | `~/.tmux.conf` |
 | `dot_vimrc` | `~/.vimrc` |
+| `private_dot_config/novalab/themes/tui-kit.toml.tmpl` | `~/.config/novalab/themes/tui-kit.toml` |
+| `private_dot_config/k9s/skins/novalab.yaml.tmpl` | `~/.config/k9s/skins/novalab.yaml` |
+| `private_dot_config/lazyjournal/create_config.yml.tmpl` | `~/.config/lazyjournal/config.yml` (create-only) |
+| `private_dot_config/netdoc/create_theme.tmpl` | `~/.config/netdoc/theme` (create-only) |
 
 ### Bash and Git are modifier-managed
 
@@ -598,12 +645,56 @@ Starter-only files such as the LazyVim starter `README.md`, `LICENSE`, `.gitigno
 
 ### Host visual configuration
 
-- Host palette data: `.chezmoidata/theme.toml`
-- btop theme: rendered from host palette data
-- Starship: per-profile templates under `.chezmoitemplates/starship/`
-- Fastfetch: per-profile templates under `.chezmoitemplates/fastfetch/`
+The centralized theme catalog defines host identity, shared semantic
+colors, interface surfaces, and application-specific appearance preferences.
 
-Starship and Fastfetch currently retain explicit per-profile templates to preserve migration parity.
+| Component | Configuration strategy |
+|---|---|
+| Starship | Explicit per-profile templates |
+| Fastfetch | Explicit per-profile templates |
+| btop | Generated host-specific theme |
+| tui-kit applications | Generated shared RGB palette |
+| K9s | Generated native host-specific skin |
+| LazyJournal | Create-only named color configuration |
+| Network Doctor | Create-only native theme preference |
+| Dive | Native appearance |
+
+Host palette data is maintained in `.chezmoidata/theme.toml`.
+
+Starship and Fastfetch currently retain explicit per-profile templates
+to preserve migration parity.
+
+Managed themes are converged through ChezMoi. Create-only
+configurations preserve existing user preferences and are not
+automatically overwritten when catalog defaults change.
+
+Theme deployment follows application eligibility through the shared
+application selector.
+
+See [Infrastructure TUI themes](docs/application-catalog.md#infrastructure-tui-themes)
+for implementation details and configuration ownership rules.
+
+#### Theme regression testing
+
+Theme changes must be validated from the repository root:
+
+```bash
+python scripts/test-theme-catalog.py
+bash scripts/test-theme-env.sh
+```
+
+The theme catalog test requires Python 3.11 or newer, ChezMoi, and
+PyYAML in the development environment.
+
+The shell regression suite requires Bash and can be executed on Linux
+or through WSL.
+
+These tests validate configuration eligibility, deterministic rendering,
+palette mappings, and shell activation behavior without applying
+configuration to live hosts.
+
+Native application behavior must also be checked when introducing new
+theme properties or upgrading applications.
 
 ### Validate a config change
 
@@ -682,9 +773,13 @@ Add extra enrollment prompts only when a host genuinely has optional behavior.
 If the host has a distinct theme:
 
 - add or update palette data in `.chezmoidata/theme.toml`
+- define the supported LazyJournal accent for managed Linux profiles
 - add a Starship profile template
 - add a Fastfetch profile template
 - verify the btop theme renders correctly
+- verify eligible infrastructure TUI configurations render correctly
+- run `python scripts/test-theme-catalog.py`
+- run `bash scripts/test-theme-env.sh` from Linux or WSL
 
 ### 4. Add tool/config exceptions
 
@@ -726,11 +821,13 @@ Tool upgrades are deliberate repository changes.
 
 1. Verify the upstream release and supported architectures.
 2. Change the exact version pin in `.chezmoidata/apps.toml`.
-3. Run `python scripts/test-app-catalog.py`.
-4. Review the Git diff.
-5. Test rendering and installation on a representative host.
-6. Verify the tool launches and its configuration remains compatible.
-7. Commit, push, and roll out normally.
+3. Review native configuration and theme compatibility.
+4. Run `python scripts/test-app-catalog.py`.
+5. Run the applicable theme and shell environment regression suites.
+6. Review the Git diff.
+7. Test rendering and installation on a representative host.
+8. Verify the tool launches and its configuration remains compatible.
+9. Commit, push, and roll out normally.
 
 Bootstrap infrastructure is pinned separately in `install.sh`:
 
@@ -851,32 +948,58 @@ Do not change OPNsense to `managed` until the FreeBSD package, filesystem, shell
 
 Forgejo is authoritative. GitHub is a public mirror.
 
-On the authoring workstation:
+Repository changes should be developed on feature branches, reviewed,
+validated, and committed before integration into `main`.
+
+On the authoring workstation, inspect the configured remotes:
 
 ```powershell
-git add .
-git commit -m "Describe the change"
-
-git push origin main
-git push github main
+git remote -v
 ```
 
-`origin` is the Forgejo remote on the authoring workstation.
+The authoring repository uses the `forgejo` remote for authoritative
+repository operations and the `github` remote for public mirror
+synchronization.
 
-Hosts may clone or pull from the public GitHub mirror when Forgejo SSH credentials are not available.
-
-Before committing:
+Before committing, run the applicable regression tests and review
+the changes:
 
 ```powershell
 git diff --check
 git diff
 ```
 
-For shell-script changes:
+For bootstrap shell-script changes:
 
 ```powershell
 wsl bash -n /mnt/c/Users/Nova/workspaces/novalabs-dotfiles/install.sh
 ```
+
+For theme environment changes:
+
+```bash
+bash scripts/test-theme-env.sh
+```
+
+Stage the intended files explicitly and review the staged changes
+before creating a commit.
+
+```powershell
+git diff --cached --check
+git diff --cached
+```
+
+Push the feature branch to Forgejo and review it through a pull request
+before integrating it into `main`.
+
+Feature branch publication, pull request integration, public mirror
+synchronization, and host deployment are separate operations.
+
+Synchronize the GitHub mirror only after the authoritative `main`
+branch contains the reviewed changes.
+
+Hosts may clone or pull from the public GitHub mirror when Forgejo
+SSH credentials are not available.
 
 ## Mise garbage collection
 
