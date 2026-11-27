@@ -267,19 +267,45 @@ optional presentation library is unavailable.
 These preferences apply to NovaLabs-generated presentation,
 not colors emitted independently by native tools or subprocesses.
 
-At the CLI integration checkpoint, argument parsing and configuration
-propagation are validated. Enhanced production rendering remains pending.
+The CLI integration checkpoint validated argument parsing and configuration
+propagation. Production preview rendering now consumes these settings.
+
+### Production preview orchestration
+
+The Linux preview dispatcher selects `bootstrap_enhanced_preview` when
+presentation is available. It uses guarded calls through `bootstrap_ui_call`
+to render branding, system and runtime identity, enrollment policy, the
+planned eight-stage workflow, native package policies and completion.
+
+Runtime pins and the named-profile package inventory are read from the
+installer's existing configuration. Host identity is not inferred from the
+hostname: the profile remains unresolved until authoritative enrollment.
+The preview does not start the execution tracker or report planned stages
+as completed operations.
+
+| Presentation state | Preview behavior |
+|---|---|
+| Available, animation eligible | Animated branding and enhanced preview |
+| Available, animation disabled | Static branding and enhanced preview |
+| Available, plain | Enhanced textual preview without presentation ANSI sequences |
+| Unavailable | Original native preview |
+| Explicit rendering failure | Disable guarded calls and render original native preview |
+
+The original preview heredoc is retained in `bootstrap_native_preview`.
+If presentation becomes unavailable partway through rendering, previously
+printed content is not erased; some information may be repeated when the
+native fallback provides the complete original preview.
+
+Preview exits before runtime downloads, enrollment or infrastructure
+execution. Apply-mode commands and package policies are unchanged.
+The descriptive plan must remain synchronized with the actual workflow.
 
 ### Integration checkpoint
 
-At the initialization checkpoint, the production installer loads
-the optional presentation engine but does not yet invoke enhanced
-rendering functions.
-
-The existing preview output, infrastructure commands, package
-policies, enrollment workflow and application convergence behavior
-remain unchanged.
-
+Phase 4.05 validates enhanced production preview rendering and native
+fallback. Phase 4.03 and 4.04 previously validated initialization and CLI
+propagation respectively. Apply-mode presentation, authoritative host
+identity, exit-status preservation and signal cleanup remain pending.
 No new mandatory runtime dependencies are introduced.
 
 ## Terminal compatibility
@@ -733,16 +759,17 @@ complementary regression suites.
 | Suite | Checkpoints | Result |
 |---|---:|---|
 | Shell presentation regression | 36 | Passed |
-| Pseudo-terminal regression | 11 | Passed |
+| Pseudo-terminal regression | 17 | Passed |
 | Production presentation adapter | 11 | Passed |
-| Production installer integration | 20 | Passed |
-| **Total** | **78** | **Passed** |
+| Production installer integration | 24 | Passed |
+| **Total** | **88** | **Passed** |
 
 Presentation regression tests validate branding, rendering,
 palette initialization, system identity, host palettes, stage
 tracking and simulated execution summaries.
 
-Pseudo-terminal tests validate interactive terminal behavior.
+Pseudo-terminal tests validate interactive terminal behavior for both the
+standalone renderer and the production installer.
 
 Adapter tests validate initialization, fallback, guarded
 presentation calls and state preservation.
@@ -778,6 +805,12 @@ required by the production presentation engine.
 | Non-UTF-8 branding fallback | Passed |
 | Live terminal resize protection | Passed |
 | Final animation frame consistency | Passed |
+| Production 256-color animation | Passed |
+| Production truecolor animation | Passed |
+| Production static color | Passed |
+| Production plain CLI | Passed |
+| Production NO_COLOR | Passed |
+| Production CI plain mode | Passed |
 
 The suite verifies emitted terminal control sequences, animation
 eligibility, redraw counts, fallback behavior and final visible
@@ -861,6 +894,10 @@ temporary repository fixtures.
 | Presentation CLI without optional library | Passed |
 | Presentation arguments preserve invalid option rejection | Passed |
 | Presentation CLI state propagation | Passed |
+| Immediate rendering failure native recovery | Passed |
+| Partial rendering failure native recovery | Passed |
+| Authoritative runtime and package data | Passed |
+| Preview infrastructure command isolation | Passed |
 
 CLI propagation testing instruments an isolated fixture library to
 capture the presentation configuration received during initialization.
@@ -868,9 +905,13 @@ This verifies actual configuration state rather than argument acceptance
 alone. The production library and authoritative theme catalog remain
 unchanged during these tests.
 
-At the initialization checkpoint, the suite compares complete
-preview output against the valid presentation initialization
-baseline.
+The suite distinguishes enhanced plain preview output from an independent
+expected native fallback baseline. Missing or malformed catalogs retain
+enhanced plain rendering. Explicit rendering failures are injected before
+and during rendering to verify native recovery. Filesystem sentinels
+strengthen early-guard assertions, and selected infrastructure command
+shims detect unexpected execution in preview. These checks do not constitute
+a comprehensive filesystem mutation audit.
 
 Expected exit statuses are verified for the preview, help,
 invalid argument and prune safety scenarios.
@@ -889,7 +930,7 @@ bash scripts/test-bootstrap-adapter.sh
 bash scripts/test-bootstrap-integration.sh
 ```
 
-The combined CLI integration checkpoint contains 78 passing
+The combined production preview checkpoint contains 88 passing
 regression checks.
 
 Python remains a development-only dependency.
@@ -901,10 +942,10 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Validation | Result |
 |---|---|
 | Shell presentation regression | 36/36 passed |
-| Pseudo-terminal regression | 11/11 passed |
+| Pseudo-terminal regression | 17/17 passed |
 | Presentation adapter regression | 11/11 passed |
-| Production installer integration | 20/20 passed |
-| **Combined regression coverage** | **78/78 passed** |
+| Production installer integration | 24/24 passed |
+| **Combined regression coverage** | **88/88 passed** |
 | Truecolor animation | Passed |
 | ANSI 256-color animation | Passed |
 | Static presentation | Passed |
@@ -917,15 +958,15 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Failed execution simulation | Passed |
 
 The current acceptance record consists of 36 shell presentation
-checkpoints, 11 pseudo-terminal checkpoints, 11 presentation
-adapter checkpoints and 20 production installer integration
+checkpoints, 17 pseudo-terminal checkpoints, 11 presentation
+adapter checkpoints and 24 production installer integration
 checkpoints.
 
-All 78 checkpoints passed on the AMD64 WSL development
+All 88 checkpoints passed on the AMD64 WSL development
 environment.
 
-These results establish presentation and initialization
-acceptance, not production apply acceptance.
+These results establish presentation, initialization, CLI and production
+preview acceptance, not production apply acceptance.
 
 ## Safety boundaries
 
@@ -958,7 +999,7 @@ The `scripts/` and `docs/` directories are excluded from ChezMoi reconciliation.
 The following areas require additional validation or integration work:
 
 - Completion of production presentation lifecycle integration.
-- Enhanced production preview and apply rendering.
+- Enhanced production apply rendering.
 - Authoritative ChezMoi host profile resolution.
 - Preservation of real command exit statuses.
 - Production presentation failure isolation during apply execution.
@@ -980,8 +1021,9 @@ a general-purpose TOML parser.
 
 Elapsed-time measurements are not monotonic.
 
-Preview timings represent demonstration execution, not actual
-infrastructure reconciliation performance.
+Standalone simulator timings represent demonstration execution, not actual
+infrastructure reconciliation performance. The production preview does
+not simulate execution-stage timings.
 
 ## Implementation roadmap
 
@@ -1003,7 +1045,7 @@ infrastructure reconciliation performance.
 | 4.02 — Presentation safety hardening | Complete |
 | 4.03 — Optional presentation initialization and fallback | Validated |
 | 4.04 — Presentation CLI arguments | Validated |
-| 4.05 — Production preview presentation | Pending |
+| 4.05 — Production preview presentation | Validated |
 | 4.06 — Runtime and enrollment stages | Pending |
 | 4.07 — Authoritative host identity resolution | Pending |
 | 4.08 — Native prerequisites and configuration | Pending |
@@ -1025,6 +1067,11 @@ The production presentation CLI checkpoint expands combined
 regression coverage to 78 passing checks, including argument
 parsing, configuration propagation, argument combinations,
 help output and preservation of existing safety guards.
+
+The production preview checkpoint expands coverage to 88 passing checks
+on AMD64 Ubuntu WSL. Production animation, static color, plain output,
+NO_COLOR, CI compatibility and native recovery are validated. Interactive
+preview invocations confirm expected content; no apply was performed.
 
 The branding foundation was introduced in commit `9307275` and merged into `main` at `621e8abc3599630a00edb8a3aaf596f23a85304d`.
 
