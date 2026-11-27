@@ -17,11 +17,17 @@ The presentation engine is implemented using POSIX shell and standard system uti
 
 ## Implementation status
 
-The presentation engine and standalone simulation are implemented and validated.
+The presentation engine, standalone simulation and production
+`install.sh` integration are implemented.
 
-Integration with the production `install.sh` workflow remains pending.
+Production integration covers preview rendering, apply-stage reporting,
+execution lifecycle accounting, exit-status preservation, signal handling
+and best-effort cleanup. The combined regression record contains 159
+passing checkpoints on AMD64 Ubuntu WSL. These results establish isolated
+acceptance, not live production apply or fleet acceptance.
 
-The standalone preview does not enroll hosts, install applications, reconcile configuration, or modify native packages.
+The standalone preview does not enroll hosts, install applications,
+reconcile configuration, or modify native packages.
 
 ## Architecture
 
@@ -35,6 +41,8 @@ The standalone preview does not enroll hosts, install applications, reconcile co
 | `scripts/test-bootstrap-ui-pty.py` | Automated interactive terminal compatibility and animation regression tests |
 | `scripts/test-bootstrap-adapter.sh` | Presentation adapter initialization, fallback and state preservation regression tests |
 | `scripts/test-bootstrap-integration.sh` | Production installer preview and safety guard integration tests |
+| `scripts/test-bootstrap-runtime.sh` | Apply-stage, lifecycle, failure, signal and cleanup integration tests |
+| `scripts/test-bootstrap-apply-pty.py` | Full apply controlling-terminal and interruption regression tests |
 
 The presentation library is sourced by its caller. It does not independently initiate bootstrap execution, change global shell options, or install signal handlers.
 
@@ -51,7 +59,7 @@ flowchart TD
 
     Catalog --> Library
     Preview --> Library
-    Installer -. Planned integration .-> Library
+    Installer -->|Production integration| Library
     Library --> Terminal
     Installer --> Execution
 ```
@@ -66,7 +74,8 @@ The production installer remains responsible for:
 - Application installation.
 - Profile-specific operations.
 - Application version auditing and pruning.
-- Exit-status handling.
+- Exit-status and signal handling.
+- Temporary-artifact cleanup and privileged finalization.
 
 The presentation library reports execution state supplied by the caller. It must not independently determine whether an infrastructure operation succeeded.
 
@@ -465,7 +474,8 @@ Phase 4.10 instruments Stage 08 around existing Mise audit and prune
 commands. Audit always runs during apply; prune runs only with explicit
 `--prune`. A successful audit without pruning counts as a completed stage.
 Audit or prune failure prevents stage success and retains its exit status.
-The native completion message remains; final lifecycle summaries are pending.
+At the Phase 4.10 implementation checkpoint, the native completion
+message remained and unified lifecycle summaries had not yet been integrated.
 
 A fourth fixture scope executes the complete installer to its natural exit,
 with existing managed-path redirection and constrained infrastructure shims.
@@ -550,7 +560,8 @@ passed on AMD64 Ubuntu WSL:
 | Controlling terminal apply: interrupt and final ANSI reset | Passed |
 
 The combined apply integration suite contains 71 passing checkpoints.
-The partial summary can already be visible before native fallback is emitted.
+A partial summary can already be visible before native fallback is emitted;
+the original execution status remains authoritative.
 
 ### Integration checkpoint
 
@@ -1198,8 +1209,8 @@ bash scripts/test-bootstrap-integration.sh
 bash scripts/test-bootstrap-runtime.sh
 ```
 
-The combined integration hardening checkpoint contains 159 passing
-regression checks.
+The combined regression acceptance record contains 159 passing
+checks across five complementary suites.
 
 Python remains a development-only dependency.
 
@@ -1213,7 +1224,7 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 | Pseudo-terminal regression | 17/17 passed |
 | Presentation adapter regression | 11/11 passed |
 | Production installer integration | 24/24 passed |
-| Apply integration | 71/71 passed |
+| Apply integration and lifecycle | 71/71 passed |
 | **Combined regression coverage** | **159/159 passed** |
 | Truecolor animation | Passed |
 | ANSI 256-color animation | Passed |
@@ -1229,14 +1240,15 @@ The presentation engine has been interactively validated on an AMD64 Ubuntu WSL 
 The current acceptance record consists of 36 shell presentation
 checkpoints, 17 pseudo-terminal checkpoints, 11 presentation
 adapter checkpoints, 24 production installer integration checkpoints
-and 71 apply integration checkpoints.
+and 71 apply integration and lifecycle checkpoints.
 
 All 159 checkpoints passed on the AMD64 WSL development
 environment.
 
-These results establish presentation, initialization, CLI, production
-preview and full-length isolated apply acceptance, not live production apply
-acceptance.
+These results establish presentation, initialization, CLI,
+production preview and full-length isolated apply acceptance. They do not
+establish live production apply acceptance, platform-wide compatibility
+or fleet rollout acceptance.
 
 ## Safety boundaries
 
@@ -1251,7 +1263,9 @@ The production integration must:
 - Preserve FreeBSD and OPNsense exclusion behavior.
 - Preserve native command output and interactive prompts.
 - Preserve actual command and installer exit statuses.
-- Preserve temporary-file cleanup.
+- Preserve temporary-file cleanup and best-effort finalization.
+- Preserve signal exit statuses and the original execution result.
+- Keep privileged cleanup non-interactive.
 - Avoid introducing additional privilege requirements.
 - Avoid background execution dependencies.
 - Avoid allowing presentation-only failures to prevent otherwise valid bootstrap execution.
@@ -1268,13 +1282,14 @@ The `scripts/` and `docs/` directories are excluded from ChezMoi reconciliation.
 
 The following areas require additional validation or integration work:
 
-- Live acceptance of production apply rendering and authoritative host identity.
-- Live command exit-status and presentation isolation validation.
-- Signal interruption during arbitrary foreground children and cleanup.
-- Non-interactive cleanup can leave an artifact if sudo authorization is unavailable.
+- Live production apply acceptance, including authoritative host identity.
+- Signal behavior during arbitrary foreground-child execution; POSIX shells
+  may defer traps until foreground commands return.
+- Non-interactive privileged cleanup can leave a staged artifact when sudo
+  authorization is unavailable.
 - Non-UTF-8 compatibility outside branding.
 - Extremely narrow terminal layout acceptance.
-- Live AMD64 and ARM64 bootstrap canary validation.
+- Live AMD64 and ARM64 bootstrap canary validation before fleet rollout.
 
 Live terminal resize protection has passed automated pseudo-terminal
 testing. However, a race remains possible between checking terminal
@@ -1300,7 +1315,7 @@ not simulate execution-stage timings.
 | 1 — Installer architecture audit | Complete |
 | 2 — Branding and animation engine | Complete |
 | 3 — Host-aware presentation | Complete |
-| 4 — Production bootstrap integration | In progress |
+| 4 — Production bootstrap integration | Implemented; final documentation acceptance in progress |
 | 5 — Compatibility and regression testing | Pending |
 | 6 — Live canary acceptance | Pending |
 | 7 — Fleet rollout and final documentation | Pending |
@@ -1321,7 +1336,7 @@ not simulate execution-stage timings.
 | 4.10 — Application audit and optional pruning | Validated (isolated full apply) |
 | 4.11 — Exit-status preservation and cleanup | Validated (isolated lifecycle) |
 | 4.12 — Integration regression testing | Validated (isolated integration) |
-| 4.13 — Documentation and implementation acceptance | Pending |
+| 4.13 — Documentation and implementation acceptance | In progress |
 
 Presentation safety hardening was introduced in commit `c3a6dfa`
 and merged into `main` at
@@ -1379,8 +1394,13 @@ and integration review remain pending.
 The integration hardening checkpoint expands coverage to 159 passing
 checks on AMD64 Ubuntu WSL. Non-interactive privileged cleanup, explicit
 summary component failures, and terminal-generated Ctrl-C with final ANSI
-reset are validated in fixtures. Live apply and dedicated unprivileged
-cleanup failure coverage remain pending.
+reset are validated in fixtures. Live apply acceptance, broader platform
+validation and dedicated unprivileged cleanup failure coverage remain
+outstanding.
+
+The following checkpoint history is chronological. Statements that
+work remains pending describe the state at the time of each checkpoint,
+not the current implementation status.
 
 The branding foundation was introduced in commit `9307275` and merged into `main` at `621e8abc3599630a00edb8a3aaf596f23a85304d`.
 

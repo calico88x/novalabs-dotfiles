@@ -411,15 +411,14 @@ Enhanced production preview rendering is implemented. The installer
 selects animated, static or plain presentation according to terminal
 capabilities and CLI preferences. An unavailable presentation library or
 explicit rendering failure selects the original native preview.
-Apply mode now displays startup branding and tracks runtime initialization,
-ChezMoi enrollment and host policy validation, followed by optional host
-identity and palette presentation from the validated profile. Native
-prerequisites, configuration reconciliation, application convergence and
-Chronytop policy and application audit with optional pruning are also tracked.
-Existing infrastructure commands and native output
-remain unchanged except for unified exit and cleanup handling. Apply reports
-completion or failure using the original process status, with native fallback
-when presentation is unavailable. Signal cleanup is best effort; privileged finalization is non-interactive.
+Apply mode displays startup branding, tracks all eight execution
+stages, and optionally presents host identity and palette information
+from the validated profile. The unified lifecycle handler reports completion,
+failure or incomplete execution while preserving the original process status.
+Presentation failures use native fallback diagnostics. HUP, INT and TERM
+handling and best-effort cleanup are integrated; privileged finalization
+uses non-interactive sudo. Existing infrastructure policies and native
+command output remain unchanged.
 
 See [Bootstrap presentation architecture](docs/bootstrap-ui.md)
 for implementation details and regression coverage.
