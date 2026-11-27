@@ -30,7 +30,7 @@ pass() { passed=$((passed + 1)); printf 'PASS: %s\n' "$*"; }
 
 reset_fixture() {
     local fixture_scope="${1:-runtime}"
-    case "$fixture_scope" in runtime|extended|applications) ;; *) fail "Unknown fixture scope" ;; esac
+    case "$fixture_scope" in runtime|extended|applications|full) ;; *) fail "Unknown fixture scope" ;; esac
     rm -rf -- "$FIXTURE" "$HOME_FIX" "$BIN" "$TMP"
     mkdir -p "$FIXTURE/scripts/lib" "$FIXTURE/.chezmoidata" \
         "$FIXTURE/.chezmoiscripts" "$HOME_FIX/.local/bin" "$BIN" "$TMP"
@@ -46,29 +46,33 @@ reset_fixture() {
         /^bootstrap_ui_call nl_ui_stage_begin "APPLICATION CONVERGENCE"$/ {
             if (scope == "extended") { count++; stop=1 }
         }
-        /^printf '\''==> Auditing unused Mise tool versions\\n'\''$/ {
+        /^bootstrap_ui_call nl_ui_stage_begin "APPLICATION AUDIT AND PRUNING"$/ {
             if (scope == "applications") { count++; stop=1 }
         }
         !stop { print }
-        END { if (count != 1 || (scope != "runtime" && starts != 1)) exit 1 }
+        END { if (count != (scope == "full" ? 0 : 1) || (scope != "runtime" && starts != 1)) exit 1 }
     ' "$ROOT/install.sh" > "$FIXTURE/install.sh" || fail 'Missing unique apply cutoff'
-    if [[ "$fixture_scope" == applications ]]; then
+    if [[ "$fixture_scope" == applications || "$fixture_scope" == full ]]; then
         # Exact, counted substitutions; no real system paths in this fixture.
         for path in /usr/bin/chronyc /usr/local/bin/chronytop /usr/local/bin/.chronytop; do
             [[ $(grep -Fc "$path" "$FIXTURE/install.sh") == 1 ]] || fail "Unexpected path count: $path"
         done
         sed -i 's@/usr/bin/chronyc@$FIXTURE/managed/chronyc@g; s@/usr/local/bin/chronytop@$FIXTURE/managed/chronytop@g; s@/usr/local/bin/\.chronytop@$FIXTURE/managed/.chronytop@g' "$FIXTURE/install.sh"
         if grep -Eq '/usr/local/bin/|/usr/bin/chronyc' "$FIXTURE/install.sh"; then fail 'Unredirected managed path'; fi
-        printf '%s\n' "printf '%s\\n' 'REACHED_STAGE_08_BOUNDARY'" >> "$FIXTURE/install.sh"
+        if [[ "$fixture_scope" == applications ]]; then
+            printf '%s\n' "printf '%s\\n' 'REACHED_STAGE_08_BOUNDARY'" >> "$FIXTURE/install.sh"
+        fi
     elif [[ "$fixture_scope" == extended ]]; then
         printf '%s\n' "printf '%s\\n' 'REACHED_STAGE_06_BOUNDARY'" >> "$FIXTURE/install.sh"
     else
         printf '%s\n' "printf '%s\\n' 'REACHED_STAGE_04_BOUNDARY'" >> "$FIXTURE/install.sh"
     fi
-    cat >> "$FIXTURE/install.sh" <<'EOF'
+    if [[ "$fixture_scope" != full ]]; then
+        cat >> "$FIXTURE/install.sh" <<'EOF'
 printf '%s\n' 'boundary' >> "$TRACE"
 exit 0
 EOF
+    fi
     sh -n "$FIXTURE/install.sh" || fail 'Invalid apply-prefix fixture'
     printf '%s\n' 'fixture validator template' > \
         "$FIXTURE/.chezmoiscripts/run_before_10-validate-host.sh.tmpl"
@@ -94,6 +98,16 @@ fi
 if [ "$#" = 1 ] && [ "$1" = install ]; then
     printf '%s\n' mise-install >> "$TRACE"
     exit "${MISE_INSTALL_STATUS:-0}"
+fi
+if [ "$#" = 2 ] && [ "$1" = ls ] && [ "$2" = --prunable ]; then
+    printf '%s\n' audit >> "$TRACE"
+    printf '%s\n' NATIVE_AUDIT_OUTPUT
+    exit "${AUDIT_STATUS:-0}"
+fi
+if [ "$#" = 1 ] && [ "$1" = prune ]; then
+    printf '%s\n' prune >> "$TRACE"
+    printf '%s\n' NATIVE_PRUNE_OUTPUT
+    exit "${PRUNE_STATUS:-0}"
 fi
 [ "$#" -eq 7 ] || exit 98
 [ "$1" = x ] && [ "$2" = aqua:twpayne/chezmoi@2.72.1 ] &&
@@ -201,7 +215,7 @@ EOF
         printf '%s\n' '#!/bin/sh' 'exit 98' > "$BIN/cc"
         chmod +x "$BIN/cc"
     fi
-    if [[ "$fixture_scope" == applications ]]; then
+    if [[ "$fixture_scope" == applications || "$fixture_scope" == full ]]; then
         mkdir -p "$FIXTURE/managed"
         printf '%s\n' '#!/bin/sh' 'exit 0' > "$FIXTURE/managed/chronyc"
         chmod +x "$FIXTURE/managed/chronyc"
@@ -285,10 +299,15 @@ EOF
 }
 
 run_apply() {
+    local -a apply_args=(--apply --plain)
+    if [[ "${1:-}" == --prune ]]; then
+        apply_args+=(--prune)
+        shift
+    fi
     actual=0
     env -i PATH="$BIN:/usr/bin:/bin" HOME="$HOME_FIX" TMPDIR="$TMP" \
         LC_ALL=C TERM=dumb TRACE="$TRACE" FIXTURE="$FIXTURE" FIXTURE_BIN="$BIN" \
-        "$@" sh "$FIXTURE/install.sh" --apply --plain > "$OUT" 2> "$ERR" || actual=$?
+        "$@" sh "$FIXTURE/install.sh" "${apply_args[@]}" > "$OUT" 2> "$ERR" || actual=$?
     if grep -q '^BLOCKED:' "$TRACE"; then fail 'Unexpected infrastructure invocation'; fi
     [[ -z "$(find "$TMP" -mindepth 1 -print -quit)" ]] || fail 'Validator temporary file leaked'
 }
@@ -749,5 +768,92 @@ absent '[07/08]'
 managed_trace checksums download stage-binary replace-binary chronytop-version boundary
 pass 'Chronytop presentation failure preserves execution'
 
+# Full-length fixtures reach the natural production exit.
+full_trace() {
+    trace_is version version enroll render-validator validate profile with-docker chronytop-policy apt-update 'apt-install:-y --no-install-recommends build-essential libatomic1' apply mise-install "$@"
+}
+full_success() {
+    status 0
+    contains 'NovaLabs bootstrap completed successfully.'
+    contains 'NATIVE_AUDIT_OUTPUT'
+    absent 'REACHED_STAGE_'
+    absent 'BOOTSTRAP COMPLETE'
+    no_stage_file
+}
+reset_fixture full
+run_apply
+full_success
+contains '[08/08] APPLICATION AUDIT AND PRUNING'
+contains '[OK] Application audit completed.'
+contains '[INFO] Pruning not requested.'
+absent '[SKIP] Application audit'
+absent 'NATIVE_PRUNE_OUTPUT'
+full_trace audit
+pass 'Full apply audits without implicit pruning'
+
+reset_fixture full
+run_apply --prune
+full_success
+contains '[OK] Application audit and pruning completed.'
+contains 'NATIVE_PRUNE_OUTPUT'
+absent 'Pruning not requested.'
+full_trace audit prune
+pass 'Explicit pruning follows successful audit'
+
+reset_fixture full
+run_apply --prune AUDIT_STATUS=71
+status 71
+absent 'Application audit completed.'
+absent 'Application audit and pruning completed.'
+absent 'NovaLabs bootstrap completed successfully.'
+full_trace audit
+pass 'Audit failure prevents pruning and preserves status'
+
+reset_fixture full
+run_apply --prune PRUNE_STATUS=72
+status 72
+absent 'Application audit and pruning completed.'
+absent 'NovaLabs bootstrap completed successfully.'
+full_trace audit prune
+pass 'Prune failure preserves exit status'
+
+reset_fixture full
+rm "$FIXTURE/scripts/lib/bootstrap-ui.sh"
+run_apply --prune
+full_success
+absent '[08/08]'
+full_trace audit prune
+pass 'Full apply with pruning without presentation'
+
+reset_fixture full
+sed -i 's/^nl_ui_stage_begin() {/nl_ui_saved_stage_begin() {/' "$FIXTURE/scripts/lib/bootstrap-ui.sh"
+cat >> "$FIXTURE/scripts/lib/bootstrap-ui.sh" <<'EOF'
+nl_ui_stage_begin() {
+    [ "$1" != 'APPLICATION AUDIT AND PRUNING' ] || return 73
+    nl_ui_saved_stage_begin "$@"
+}
+EOF
+run_apply --prune
+full_success
+absent '[08/08]'
+full_trace audit prune
+pass 'Stage 08 rendering failure preserves audit and pruning'
+
+reset_fixture full
+managed_run
+full_success
+contains '[OK] Chronytop installed and verified.'
+contains '[OK] Application audit completed.'
+managed_trace checksums download stage-binary replace-binary chronytop-version audit
+pass 'Full managed Chronytop apply reaches audit'
+
+reset_fixture full
+run_apply --prune MISE_INSTALL_STATUS=61
+status 61
+absent '[08/08]'
+absent 'NovaLabs bootstrap completed successfully.'
+full_trace
+pass 'Earlier failure prevents audit and pruning'
+
 printf '%s\n' '============================================================'
-printf 'PASS: All %s apply-prefix checkpoints validated\n' "$passed"
+printf 'PASS: All %s apply integration checkpoints validated\n' "$passed"
